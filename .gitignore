@@ -1,0 +1,79 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Logs and dumps
+*.log
+*.pot
+*.mo
+
+# Environment files
+.env
+*.env
+
+# IDE/editor files
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Kivy build cache
+*.pyo
+*.spec
+build/
+bin/
+dist/
+
+# Kivy assets (if generated)
+*.apk
+*.keystore
+*.pem
+
+# pyinstaller / build artifacts
+*.manifest
+*.spec
+
+# pipenv / poetry / pyproject.toml artifacts
+Pipfile.lock
+poetry.lock
+__pypackages__/
+
+# Test and coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# VS Code debugging
+*.code-workspace
+
+# Kivy config
+.kivy/
+.kivy_config/
