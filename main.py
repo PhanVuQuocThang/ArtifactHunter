@@ -37,8 +37,7 @@ class LevelSelectionScreen(Screen):
         print(f"Select level {level_id}")
         match level_id:
             case 1:
-                import level1
-                level1.run()
+                pass
             case 2:
                 pass
             case 3:
