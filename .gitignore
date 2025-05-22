@@ -77,3 +77,8 @@ coverage.xml
 # Kivy config
 .kivy/
 .kivy_config/
+
+# Ignore test files
+test.py
+test_*.py
+*_local.py
