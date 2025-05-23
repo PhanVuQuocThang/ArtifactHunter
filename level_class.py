@@ -21,10 +21,13 @@ class Platform(Widget):
 
 
 class Entity(Widget):
+    """
+    This is still a WIP. Please read the comments of each attribute for details.
+    """
     def __init__(self, x, y, width, height, **kwargs):
         super().__init__(**kwargs)
-        self.pos = (x, y)
-        self.size = (width, height)
+        self.pos = (x, y) # Position of bottom-left corner of the Entity rectangle.
+        self.size = (width, height) # Width and height from the bottom-left corner. Should be positive.
         self.velocity = Vector(0, 0)
         self.on_ground = False # Prevent double jumping, do falling check, etc...
         self.gravity = -800 # pixels/second
@@ -86,7 +89,7 @@ class Entity(Widget):
         self.velocity.x = 0
 
 class Player(Entity):
-    def __init__(self, x, y, width, height, **kwargs):
+    def __init__(self, x=0, y=0, width=100, height=100, **kwargs):
         super().__init__(x, y, width, height, **kwargs)
         self.inventory = []
 
@@ -124,25 +127,11 @@ class Player(Entity):
         key = keycode[1]
         self.keys_pressed.add(key)
 
-        # Handle jump (immediate action)
-        if key == 'spacebar':
-            self.jump()
-
     def _on_keyboard_up(self, keyboard, keycode):
         """Handle key release events"""
         key = keycode[1]
         if key in self.keys_pressed:
             self.keys_pressed.remove(key)
-
-    def process_input(self):
-        """Process continuous key presses (called every frame)"""
-        # Handle horizontal movement
-        if 'left' in self.keys_pressed or 'a' in self.keys_pressed:
-            self.move_left()
-        elif 'right' in self.keys_pressed or 'd' in self.keys_pressed:
-            self.move_right()
-        else:
-            self.stop_horizontal_movement()
 
     def update_graphics(self, *args):
         """Update the visual representation"""
@@ -152,3 +141,24 @@ class Player(Entity):
     def cleanup(self):
         """Clean up resources when player is destroyed"""
         self._keyboard_closed()
+
+    def process_input(self):
+        """Process continuous key presses (called every frame)"""
+        # Temporary solution to exit level. This will change.
+        if 'q' in self.keys_pressed:
+            # Switch to screen 'level_selection'
+            # self.parent.parent.manager means it's trying to access attribute manager of
+            # the class that is 2 levels above itself, which should be class Screen.
+            # Note that this is NOT related to inheritance (which uses super(), not .parent)
+            # self.parent -> LevelContents, self.parent.parent -> Level_1_Class
+            self.parent.parent.manager.current = 'level_selection'
+        # Handle jump
+        if 'spacebar' in self.keys_pressed:
+            self.jump()
+        # Handle horizontal movement
+        if 'left' in self.keys_pressed or 'a' in self.keys_pressed:
+            self.move_left()
+        elif 'right' in self.keys_pressed or 'd' in self.keys_pressed:
+            self.move_right()
+        else:
+            self.stop_horizontal_movement()

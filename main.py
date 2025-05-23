@@ -2,7 +2,9 @@ from kivy.app import App
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.core.text import LabelBase
+from kivy.clock import Clock
 
+from level_1 import LevelContents, Level_1_Class
 
 # Set default font
 LabelBase.register(name="Roboto", fn_regular="assets/fonts/EBGaramond-Regular.ttf"
@@ -37,13 +39,15 @@ class LevelSelectionScreen(Screen):
         print(f"Select level {level_id}")
         match level_id:
             case 1:
-                pass
+                # See documentation in Level_1_Class
+                self.manager.current = 'level_1'
             case 2:
                 pass
             case 3:
                 pass
             case _:
                 print("Invalid")
+
 
 class GuideScreen(Screen):
     def __init__(self, **kwargs):
@@ -55,6 +59,7 @@ class ArtifactHunterApp(App):
         sm = ScreenManager()
         sm.add_widget(MainMenuScreen(name='main_menu'))
         sm.add_widget(LevelSelectionScreen(name='level_selection'))
+        sm.add_widget(Level_1_Class(name='level_1'))
         return sm
 
 if __name__ == "__main__":
