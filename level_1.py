@@ -36,6 +36,9 @@ class LevelContents(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.player = Player(x=100, y=200, width=40, height=40)
+        self.player.inventory_add_item("H3nt4i")
+        self.player.inventory_add_item("N1gg4")
+        self.player.inventory_add_item("Chải mèo")
         self.add_widget(self.player)
         self.platforms = []
 

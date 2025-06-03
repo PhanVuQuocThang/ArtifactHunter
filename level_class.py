@@ -1,7 +1,10 @@
 from kivy.uix.widget import Widget
+from kivy.uix.popup import Popup
+from kivy.uix.label import Label
 from kivy.graphics import Rectangle, Color
 from kivy.core.window import Window
 from kivy.vector import Vector
+from kivy.lang import Builder
 
 
 class Artifact:
@@ -91,7 +94,8 @@ class Entity(Widget):
 class Player(Entity):
     def __init__(self, x=0, y=0, width=100, height=100, **kwargs):
         super().__init__(x, y, width, height, **kwargs)
-        self.inventory = []
+        self.inventory = [] # Need to also handle inventory input
+        self.inventory_popup = None # Inventory object
 
         # Input handling
         self.keys_pressed = set()
@@ -142,6 +146,26 @@ class Player(Entity):
         """Clean up resources when player is destroyed"""
         self._keyboard_closed()
 
+    def toggle_inventory(self, pressed_key: str='b'):
+        """Open the inventory popup. If the popup is already opened, close the popup."""
+        self.keys_pressed.remove(pressed_key)
+        if self.inventory_popup and self.inventory_popup._window:
+            self.inventory_popup.dismiss()
+            self.inventory_popup = None
+        else:
+            self.inventory_popup = PlayerInventory(self.inventory)
+            self.inventory_popup.bind(on_dismiss=self.inventory_close)
+            self.inventory_popup.open()
+
+    def inventory_close(self, *args):
+        self.inventory_popup = None
+
+    def inventory_add_item(self, item):
+        self.inventory.append(item)
+
+    def inventory_remove_item(self, item):
+        self.inventory.remove(item)
+
     def process_input(self):
         """Process continuous key presses (called every frame)"""
         # Temporary solution to exit level. This will change.
@@ -155,6 +179,10 @@ class Player(Entity):
         # Handle jump
         if 'spacebar' in self.keys_pressed:
             self.jump()
+        # Handle open inventory
+        if 'b' in self.keys_pressed:
+            self.toggle_inventory()
+            print("Player open inventory")
         # Handle horizontal movement
         if 'left' in self.keys_pressed or 'a' in self.keys_pressed:
             self.move_left()
@@ -162,3 +190,35 @@ class Player(Entity):
             self.move_right()
         else:
             self.stop_horizontal_movement()
+
+Builder.load_file('inventory.kv')
+class PlayerInventory(Popup):
+    """NEED DOCUMENTATION"""
+    def __init__(self, inventory, **kwargs):
+        super().__init__(**kwargs)
+        self.inventory_data = inventory
+
+    def on_open(self):
+        self.populate_inventory(self.inventory_data)
+
+    def populate_inventory(self, inventory):
+        """Populate the inventory container with items"""
+        container = self.ids.inventory_container
+        container.clear_widgets()
+
+        if inventory:
+            for item in inventory:
+                item_label = Label(
+                    text=str(item),
+                    size_hint_y=None,
+                    height=40,
+                    text_size=(None, None)
+                )
+                container.add_widget(item_label)
+        else:
+            empty_label = Label(
+                text="Inventory is empty",
+                size_hint_y=None,
+                height=40
+            )
+            container.add_widget(empty_label)

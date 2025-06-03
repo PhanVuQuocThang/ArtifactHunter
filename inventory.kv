@@ -1,0 +1,25 @@
+<PlayerInventory>:
+    title: "Inventory"
+    size_hint: 0.8, 0.8
+
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: 10
+        padding: 10
+
+        ScrollView:
+            id: scroll_view
+
+            BoxLayout:
+                id: inventory_container
+                orientation: 'vertical'
+                spacing: 5
+                size_hint_y: None
+                height: self.minimum_height
+
+        Button:
+            id: close_button
+            text: "Close"
+            size_hint_y: None
+            height: 50
+            on_press: root.dismiss()
