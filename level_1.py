@@ -1,8 +1,9 @@
 from kivy.uix.widget import Widget
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
-from level_class import Player, Platform
 from kivy.clock import Clock
+
+from level_class import Player, Platform, BaseLevelContents
 
 
 class Level_1_Class(Screen):
@@ -32,7 +33,7 @@ class Level_1_Class(Screen):
             self.update_event = None
 
 
-class LevelContents(Widget):
+class LevelContents(BaseLevelContents):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.player = Player(x=100, y=200, width=40, height=40)
@@ -64,55 +65,3 @@ class LevelContents(Widget):
             platform = Platform(x, y, width, height)
             self.platforms.append(platform)
             self.add_widget(platform)
-
-    def check_collisions(self):
-        """Check collisions between player and platforms.
-        This will be refactored later to prevent constantly rewriting the same collision check."""
-        player_rect = (
-            self.player.pos[0],
-            self.player.pos[1],
-            self.player.size[0],
-            self.player.size[1]
-        )
-
-        on_ground_temp = False
-        epsilon = 2 # pixels. Allow slight overlap or near-platform alignment. Unused.
-
-        for platform in self.platforms:
-            platform_rect = (
-                platform.pos[0],
-                platform.pos[1],
-                platform.size[0],
-                platform.size[1]
-            )
-
-            # Standard Axis-Aligned Bounding Box (AABB) collision check
-            if (player_rect[0] <= platform_rect[0] + platform_rect[2] and
-                    player_rect[0] + player_rect[2] >= platform_rect[0] and
-                    player_rect[1] <= platform_rect[1] + platform_rect[3] and
-                    player_rect[1] + player_rect[3] >= platform_rect[1]):
-
-                # Player is falling down onto platform
-                if self.player.velocity.y <= 0:
-                    # Place player on top of platform
-                    self.player.pos = (
-                        self.player.pos[0],
-                        platform_rect[1] + platform_rect[3]
-                    )
-                    self.player.velocity.y = 0
-                    on_ground_temp = True
-                    break  # Stop checking other platforms
-        self.player.on_ground = on_ground_temp
-
-
-    def update(self, dt):
-        """Main game update loop. This is called by Clock.schedule_interval.
-        Follow: process input -> update -> check collision."""
-        self.player.process_input()
-        self.player.update(dt)
-        self.check_collisions()
-
-    def cleanup(self):
-        """Clean up game resources"""
-        if hasattr(self.player, 'cleanup'):
-            self.player.cleanup()
