@@ -1,3 +1,5 @@
+"""This file contains all the main classes that'll be used across the project."""
+
 from kivy.uix.widget import Widget
 from kivy.uix.popup import Popup
 from kivy.uix.label import Label
@@ -5,6 +7,7 @@ from kivy.graphics import Rectangle, Color
 from kivy.core.window import Window
 from kivy.vector import Vector
 from kivy.lang import Builder
+
 
 
 class Artifact:
@@ -191,6 +194,7 @@ class Player(Entity):
         else:
             self.stop_horizontal_movement()
 
+
 Builder.load_file('inventory.kv')
 class PlayerInventory(Popup):
     """NEED DOCUMENTATION"""
@@ -222,3 +226,79 @@ class PlayerInventory(Popup):
                 height=40
             )
             container.add_widget(empty_label)
+
+class BaseLevelContents(Widget):
+    """Contain the base contents of levels. This one only handles the main logic."""
+
+    def check_collisions(self):
+        """Check collisions between player and platforms."""
+        # Type hinting for IDEs so it's less of a pain to work with.
+        # Doesn't interrupt the code with or without these.
+        self.player : Player
+        self.platform : Platform
+
+        player_rect = (
+            self.player.pos[0],
+            self.player.pos[1],
+            self.player.size[0],
+            self.player.size[1]
+        )
+
+        on_ground_temp = False
+        epsilon = 2 # pixels. Allow slight overlap or near-platform alignment. Unused.
+
+        for platform in self.platforms:
+            platform_rect = (
+                platform.pos[0],
+                platform.pos[1],
+                platform.size[0],
+                platform.size[1]
+            )
+
+            # Standard Axis-Aligned Bounding Box (AABB) collision check
+            if (player_rect[0] < platform_rect[0] + platform_rect[2] and
+                    player_rect[0] + player_rect[2] > platform_rect[0] and
+                    player_rect[1] < platform_rect[1] + platform_rect[3] and
+                    player_rect[1] + player_rect[3] > platform_rect[1]):
+
+                # Calculate overlap distances for each direction
+                # Read the comments to prevent misused of these variables. They follow standard naming for overlapping.
+                overlap_left = (player_rect[0] + player_rect[2]) - platform_rect[0]  # platform's left - player's right
+                overlap_right = (platform_rect[0] + platform_rect[2]) - player_rect[0]  # platform's right - player's left
+                overlap_top = (platform_rect[1] + platform_rect[3]) - player_rect[1]  # platform’s top - player’s bottom
+                overlap_bottom = (player_rect[1] + player_rect[3]) - platform_rect[1]  # platform's bottom - player's top
+                min_overlap = min(overlap_left, overlap_right, overlap_bottom, overlap_top)
+
+                # Player is falling down onto platform
+                if self.player.velocity.y <= 0 and min_overlap == overlap_top:
+                    # Place player on top of platform
+                    self.player.pos = (
+                        self.player.pos[0],
+                        platform_rect[1] + platform_rect[3]
+                    )
+                    self.player.velocity.y = 0
+                    on_ground_temp = True
+
+                # Player is head hitting the bottom of platform
+                elif self.player.velocity.y > 0 and min_overlap == overlap_bottom:
+                    self.player.velocity.y = 0
+
+                # Player is touching the sides of platform
+                elif self.player.velocity.x != 0 and (min_overlap == overlap_right or min_overlap == overlap_left):
+                    self.player.velocity.x = 0
+                break # Stop checking other platforms after first collision
+
+        self.player.on_ground = on_ground_temp
+
+
+    def update(self, dt):
+        """Main game update loop. This is called by Clock.schedule_interval.
+        Follow: process input -> check collisions -> update"""
+        self.player.process_input()
+        self.check_collisions()
+        self.player.update(dt)
+
+    def cleanup(self):
+        """Clean up game resources"""
+        if hasattr(self.player, 'cleanup'):
+            self.player.cleanup()
