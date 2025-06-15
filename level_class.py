@@ -7,12 +7,62 @@ from kivy.graphics import Rectangle, Color
 from kivy.core.window import Window
 from kivy.vector import Vector
 from kivy.lang import Builder
+from kivy.clock import Clock
 
 from abc import ABC, abstractmethod
 
-class Artifact:
-    def __init__(self):
-        pass
+class GameObject(Widget):
+    """Base class for game objects that appear on the screen."""
+    def __init__(self, x, y, width, height, **kwargs):
+        super().__init__(**kwargs)
+        self.pos = (x, y)
+        self.size = (width, height)
+        with self.canvas:
+            Color(1, 1, 0)  # Default: Yellow for GameObjects
+            self.rect = Rectangle(pos=self.pos, size=self.size)
+        self.bind(pos=self.update_graphics, size=self.update_graphics)
+
+    def update_graphics(self, *args):
+        self.rect.pos = self.pos
+        self.rect.size = self.size
+
+
+class Artifact(GameObject):
+    """
+    Represents a collectible artifact that grants the player special abilities
+    and is required to complete a level.
+    """
+    def __init__(self, name, description, x=0, y=0, width=100, height=100, **kwargs):
+        super().__init__(x, y, width, height, **kwargs)
+        self.is_collected = False
+        self.name = name
+        self.description = description
+
+        # Draw the artifact differently (e.g., gold color)
+        with self.canvas:
+            Color(1, 0.84, 0)  # Gold
+            self.rect = Rectangle(pos=self.pos, size=self.size)
+
+    def pick_up(self, player):
+        """
+        Add this artifact to the player's inventory and mark it as collected.
+        """
+        if not self.is_collected:
+            player.inventory_add_item(self)
+            self.is_collected = True
+            self.parent.remove_widget(self)  # Remove from scene if needed
+
+    def unlock_level(self):
+        """
+        Logic to unlock the next level.
+        You can implement actual screen/level management elsewhere.
+        """
+
+        if not self.is_collected:
+            print(f"Cannot unlock level. Artifact '{self.name}' not collected.")
+            return
+        print(f"Artifact '{self.name}' collected! Unlocking next level...")
+
 
 class Platform(Widget):
     def __init__(self, x, y, width, height, **kwargs):
@@ -82,8 +132,8 @@ class Entity(Widget):
 
     # These functions only change velocity, not position
     def jump(self):
-        if self.on_ground:
-            self.velocity.y = self.jump_speed
+        # if self.on_ground:
+        self.velocity.y = self.jump_speed
         self.on_ground = False
     def move_left(self):
         self.velocity.x = -self.move_speed
@@ -99,7 +149,10 @@ class Player(Entity):
         super().__init__(x, y, width, height, **kwargs)
         self.inventory = [] # Need to also handle inventory input
         self.inventory_popup = None # Inventory object
-
+        self.health = 3
+        self.invincible = False
+        # self.can_double_jump = False
+        # self.has_double_jumped = False
         # Input handling
         self.keys_pressed = set()
         self._keyboard = None
@@ -169,19 +222,28 @@ class Player(Entity):
     def inventory_remove_item(self, item):
         self.inventory.remove(item)
 
+    # def has_marioowo(self):
+    #     """Check if player has 'Marioowo' in inventory."""
+    #     for item in self.inventory:
+    #         if hasattr(item, 'name') and item.name == 'Marioowo':
+    #             return True
+    #     return False
+
     def process_input(self):
         """Process continuous key presses (called every frame)"""
+        # # Check for Marioowo in inventory to enable double jump
+        # self.can_double_jump = self.has_marioowo()
+
         # Temporary solution to exit level. This will change.
         if 'q' in self.keys_pressed:
-            # Switch to screen 'level_selection'
-            # self.parent.parent.manager means it's trying to access attribute manager of
-            # the class that is 2 levels above itself, which should be class Screen.
-            # Note that this is NOT related to inheritance (which uses super(), not .parent)
-            # self.parent -> LevelContents, self.parent.parent -> Level_1_Class
             self.parent.parent.manager.current = 'level_selection'
         # Handle jump
         if 'spacebar' in self.keys_pressed:
-            self.jump()
+            if self.on_ground:
+                self.jump()
+            # elif self.can_double_jump and not self.has_double_jumped:
+            #     self.jump()
+            #     self.has_double_jumped = True
         # Handle open inventory
         if 'b' in self.keys_pressed:
             self.toggle_inventory()
@@ -193,6 +255,30 @@ class Player(Entity):
             self.move_right()
         else:
             self.stop_horizontal_movement()
+
+    def on_enemy_collision(self, enemy):
+        if self.invincible:
+            return
+
+        print(f"Collided with enemy: {enemy}")
+        self.health -= 1
+        print(f"Player health: {self.health}")
+
+        if self.health <= 0:
+            self.die()
+        else:
+            self.become_invincible()
+
+    def become_invincible(self):
+        self.invincible = True
+        Clock.schedule_once(self.end_invincibility, 2)  # 2 seconds of invincibility
+
+    def end_invincibility(self, dt):
+        self.invincible = False
+
+    def die(self):
+        print("Player died")
+        #Implement death logic here, such as respawning or ending the game
 
 
 Builder.load_file('inventory.kv')
@@ -226,7 +312,86 @@ class PlayerInventory(Popup):
                 height=40
             )
             container.add_widget(empty_label)
+class Enemy(Entity):
+    """
+    Represents an enemy that can move and attack the player.
+    """
+    def __init__(self, x=0, y=0, width=100, height=100, **kwargs):
+        super().__init__(x, y, width, height, **kwargs)
+        self.health = 100
+        self.attack_damage = 1
+        self.is_alive = True
+        self.direction = 1  # 1 for right, -1 for left
+        self.move_speed = 150  # Enemy moves slower than player
 
+        # Draw the enemy as a red rectangle
+        with self.canvas:
+            Color(1, 0, 0)  # Red color
+            self.rect = Rectangle(pos=self.pos, size=self.size)
+
+        # Bind position changes to update the rectangle
+        self.bind(pos=self.update_graphic, size=self.update_graphic)
+
+    def update(self, dt, player, platforms):
+        """
+        Update enemy position, handle wall/gap detection, and check collision with player.
+        :param dt: Delta time
+        :param player: Player instance
+        :param platforms: List of Platform instances
+        """
+        # Move horizontally
+        self.velocity.x = self.direction * self.move_speed
+        self.pos = (
+            self.pos[0] + self.velocity.x * dt,
+            self.pos[1] + self.velocity.y * dt
+        )
+
+        # Wall collision: reverse direction if hitting screen edge
+        if self.pos[0] <= 0:
+            self.move_right()
+        elif self.pos[0] >= Window.width - self.size[0]:
+            self.move_left()
+
+        # Gap detection: if no platform under front foot, reverse direction
+        if not self._is_platform_ahead(platforms):
+            self.direction *= -1
+
+        # Check collision with player
+        if self.collide_widget(player):
+            self.hit_player(player)
+
+        self.update_graphic()
+
+    def _is_platform_ahead(self, platforms):
+        """
+        Check if there is a platform under the enemy's front foot.
+        """
+        # Check the front foot position
+        if self.direction == 1:
+            foot_x = self.pos[0] + self.size[0] + 1
+        else:
+            foot_x = self.pos[0] - 1
+        foot_y = self.pos[1] - 1  # Just below the enemy
+
+        for platform in platforms:
+            px, py = platform.pos
+            pw, ph = platform.size
+            if px <= foot_x <= px + pw and py <= foot_y <= py + ph:
+                return True
+        return False
+
+    def hit_player(self, player):
+        """
+        Deal damage to the player if colliding.
+        """
+        if hasattr(player, "current_health"):
+            player.current_health -= self.attack_damage
+            # Optionally, you can add knockback or invulnerability frames here
+        
+    def update_graphic(self, *args):
+        self.rect.pos = self.pos
+        self.rect.size = self.size
+    
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
     @abstractmethod
