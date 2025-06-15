@@ -8,7 +8,7 @@ from kivy.core.window import Window
 from kivy.vector import Vector
 from kivy.lang import Builder
 
-
+from abc import ABC, abstractmethod
 
 class Artifact:
     def __init__(self):
@@ -229,6 +229,9 @@ class PlayerInventory(Popup):
 
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
+    @abstractmethod
+    def create_platform(self):
+        pass
 
     def check_collisions(self):
         """Check collisions between player and platforms."""
@@ -281,7 +284,7 @@ class BaseLevelContents(Widget):
 
                 # Player is head hitting the bottom of platform
                 elif self.player.velocity.y > 0 and min_overlap == overlap_bottom:
-                    self.player.velocity.y = 0
+                    self.player.velocity.y = -50 # Makes the player fall faster
 
                 # Player is touching the sides of platform
                 elif self.player.velocity.x != 0 and (min_overlap == overlap_right or min_overlap == overlap_left):
