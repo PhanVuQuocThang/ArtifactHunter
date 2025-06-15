@@ -3,7 +3,7 @@ from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.clock import Clock
 
-from level_class import Player, Platform, BaseLevelContents
+from level_class import Player, Platform, BaseLevelContents,Artifact, Enemy
 
 
 class Level_1_Class(Screen):
@@ -41,6 +41,14 @@ class LevelContents(BaseLevelContents):
         self.player.inventory_add_item("N1gg4")
         self.player.inventory_add_item("Chải mèo")
         self.add_widget(self.player)
+        artifact = Artifact(
+            name="Marioowo",
+            description="Cho Khả năng nhảy đôi.",
+            x=300, y=200 , width = 40, height = 40
+        )
+        self.add_widget(artifact)
+        enemy = Enemy(x=500, y=200, width=40, height=40)
+        self.add_widget(enemy)
         self.platforms = []
 
         self.create_platform()
