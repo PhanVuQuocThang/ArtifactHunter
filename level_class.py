@@ -9,6 +9,7 @@ from kivy.vector import Vector
 from kivy.lang import Builder
 from kivy.clock import Clock
 
+from abc import ABC, abstractmethod
 
 class GameObject(Widget):
     """Base class for game objects that appear on the screen."""
@@ -61,7 +62,6 @@ class Artifact(GameObject):
             print(f"Cannot unlock level. Artifact '{self.name}' not collected.")
             return
         print(f"Artifact '{self.name}' collected! Unlocking next level...")
-
 
 
 class Platform(Widget):
@@ -394,6 +394,9 @@ class Enemy(Entity):
     
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
+    @abstractmethod
+    def create_platform(self):
+        pass
 
     def check_collisions(self):
         """Check collisions between player and platforms."""
@@ -446,7 +449,7 @@ class BaseLevelContents(Widget):
 
                 # Player is head hitting the bottom of platform
                 elif self.player.velocity.y > 0 and min_overlap == overlap_bottom:
-                    self.player.velocity.y = 0
+                    self.player.velocity.y = -50 # Makes the player fall faster
 
                 # Player is touching the sides of platform
                 elif self.player.velocity.x != 0 and (min_overlap == overlap_right or min_overlap == overlap_left):

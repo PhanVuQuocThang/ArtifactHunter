@@ -2,7 +2,8 @@ from kivy.app import App
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.core.text import LabelBase
-from kivy.clock import Clock
+from kivy.core.window import Window
+
 
 from level_1 import LevelContents, Level_1_Class
 
@@ -48,11 +49,12 @@ class LevelSelectionScreen(Screen):
             case _:
                 print("Invalid")
 
+    def on_enter(self, *args):
+        print(Window.size)
 
 class GuideScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
 
 class ArtifactHunterApp(App):
     def build(self):
@@ -64,4 +66,6 @@ class ArtifactHunterApp(App):
 
 if __name__ == "__main__":
     print("-----------------------")
+    Window.top = 25
+    Window.left = 0
     ArtifactHunterApp().run()
