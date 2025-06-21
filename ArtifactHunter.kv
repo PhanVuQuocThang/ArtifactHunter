@@ -44,58 +44,72 @@
             background_color: 0.8, 0.2, 0.2, 0.9  # Reddish for quit
             on_press: root.quit_game()
 
-<PauseMenuScreen>:
-    canvas.before:
-        Color:
-            rgba: 1, 1, 1, 1
-        Rectangle:
-            pos: self.pos
-            size: self.size
-            source: 'assets/backgrounds/level_selection.jpg'
+<PausePopup@Popup>:
+    size_hint: None, None
+    size: 650, 550
+    auto_dismiss: False
+    title: ''
+    background: ''
+    background_color: 0, 0, 0, 0.85
 
-    BoxLayout:
-        orientation: 'vertical'
-        padding: 40
-        spacing: 20
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: 1, 1, 1, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+                source: 'assets/backgrounds/level_selection.jpg'
 
-        Label:
-            text: "⏸ Paused"
-            font_size: '28sp'
-            size_hint_y: 0.2
-            halign: 'center'
-            valign: 'middle'
-            text_size: self.size
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: 18
+            padding: [20, 40]
+            size_hint: 0.7, 0.8
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
 
-        Button:
-            text: "▶ Continue"
-            font_size: '20sp'
-            size_hint_y: 0.15
-            on_press: root.resume_game()
+            Label:
+                text: "⏸ Paused"
+                font_size: '28sp'
+                size_hint_y: None
+                height: 40
 
-        Button:
-            text: "🎮 How to Play"
-            font_size: '20sp'
-            size_hint_y: 0.15
-            on_press: root.go_to_guide()
+            Button:
+                text: "▶ Continue"
+                font_size: '20sp'
+                size_hint_y: None
+                height: 48
+                on_press: root.resume_game()
 
-        Button:
-            text: "⚙️ Settings"
-            font_size: '20sp'
-            size_hint_y: 0.15
-            on_press: root.open_settings()
+            Button:
+                text: "🎮 How to Play"
+                font_size: '20sp'
+                size_hint_y: None
+                height: 48
+                on_press: root.go_to_guide()
 
-        Button:
-            text: "🏠 Main Menu"
-            font_size: '20sp'
-            size_hint_y: 0.15
-            on_press: root.back_to_menu()
+            Button:
+                text: "⚙️ Settings"
+                font_size: '20sp'
+                size_hint_y: None
+                height: 48
+                on_press: root.open_settings()
 
-        Button:
-            text: "❌ Quit"
-            font_size: '20sp'
-            size_hint_y: 0.15
-            background_color: 0.8, 0.2, 0.2, 0.9
-            on_press: root.quit_game()
+            Button:
+                text: "🏠 Main Menu"
+                font_size: '20sp'
+                size_hint_y: None
+                height: 48
+                on_press: root.back_to_menu()
+
+            Button:
+                text: "❌ Quit"
+                font_size: '20sp'
+                size_hint_y: None
+                height: 48
+                background_color: 0.8, 0.2, 0.2, 0.9
+                on_press: root.quit_game()
+
 
 <SettingScreen>:
     canvas.before:

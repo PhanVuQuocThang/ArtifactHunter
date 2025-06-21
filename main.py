@@ -1,7 +1,9 @@
 from kivy.app import App
+from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.core.text import LabelBase
 from kivy.core.window import Window
+from kivy.factory import Factory
 
 from level_1 import LevelContents, Level_1_Class
 from level_class import SoundManager
@@ -88,33 +90,51 @@ class SettingScreen(Screen):
         previous = getattr(app, 'previous_screen', 'main_menu')
         self.manager.current = previous
 
-class PauseMenuScreen(Screen):
+class PausePopup(Popup):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def resume_game(self):
         app = App.get_running_app()
-        if app.current_playing_screen:
-            self.manager.current = app.current_playing_screen
+        app.is_paused = False
+        # ✅ Resume logic: reset pause flag trong LevelContents
+        if hasattr(app.root.get_screen(app.current_playing_screen), 'level_contents'):
+            app.root.get_screen(app.current_playing_screen).level_contents.paused = False
+        self.dismiss()
 
     def go_to_guide(self):
         app = App.get_running_app()
-        app.previous_screen = self.manager.current  # Lưu tên màn hình hiện tại ('pause_menu')
-        self.manager.current = 'guide'
+        app.is_paused = False
+        if hasattr(app.root.get_screen(app.current_playing_screen), 'level_contents'):
+            app.root.get_screen(app.current_playing_screen).level_contents.paused = False
+        app.previous_screen = app.current_playing_screen
+        self.dismiss()
+        app.root.current = 'guide'
 
     def open_settings(self):
         app = App.get_running_app()
-        app.previous_screen = self.manager.current  # Lưu là 'pause_menu'
-        self.manager.current = 'settings'
+        app.is_paused = False
+        if hasattr(app.root.get_screen(app.current_playing_screen), 'level_contents'):
+            app.root.get_screen(app.current_playing_screen).level_contents.paused = False
+        app.previous_screen = app.current_playing_screen
+        self.dismiss()
+        app.root.current = 'settings'
 
     def back_to_menu(self):
-        self.manager.current = 'main_menu'
+        app = App.get_running_app()
+        app.is_paused = False
+        if hasattr(app.root.get_screen(app.current_playing_screen), 'level_contents'):
+            app.root.get_screen(app.current_playing_screen).level_contents.paused = False
+        self.dismiss()
+        app.root.current = 'main_menu'
 
     def quit_game(self):
         App.get_running_app().stop()
 
+
 class ArtifactHunterApp(App):
     current_playing_screen = None
+    is_paused = False  # NEW: Pause state flag
 
     def build(self):
         Window.bind(on_key_down=self.on_key_down)
@@ -125,18 +145,31 @@ class ArtifactHunterApp(App):
         sm.add_widget(LevelSelectionScreen(name='level_selection'))
         sm.add_widget(GuideScreen(name='guide'))
         sm.add_widget(SettingScreen(name='settings'))
-        sm.add_widget(PauseMenuScreen(name='pause_menu'))
         sm.add_widget(Level_1_Class(name='level_1'))
         return sm
 
     def on_key_down(self, window, key, *args):
         if key == 27:  # ESC
             current = self.root.current
-            if current.startswith("level"):
-                self.current_playing_screen = current
-                self.root.current = 'pause_menu'
-                return True
-
+            if self.is_paused:
+                for w in Window.children:
+                    if isinstance(w, Factory.PausePopup):
+                        w.dismiss()
+                        self.is_paused = False
+                        # Resume: turn off pause in LevelContents
+                        if hasattr(self.root.get_screen(current), 'level_contents'):
+                            self.root.get_screen(current).level_contents.paused = False
+                        break
+            else:
+                if current.startswith("level"):
+                    self.current_playing_screen = current
+                    self.is_paused = True
+                    # Pause:turn on pause in LevelContents
+                    if hasattr(self.root.get_screen(current), 'level_contents'):
+                        self.root.get_screen(current).level_contents.paused = True
+                    popup = Factory.PausePopup()
+                    popup.open()
+            return True
 
 if __name__ == "__main__":
     print("-----------------------")
