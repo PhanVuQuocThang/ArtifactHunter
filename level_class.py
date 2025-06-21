@@ -468,5 +468,6 @@ class BaseLevelContents(Widget):
 
     def cleanup(self):
         """Clean up game resources"""
+        self.clear_widgets()
         if hasattr(self.player, 'cleanup'):
             self.player.cleanup()
