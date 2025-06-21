@@ -65,7 +65,15 @@ class GuideScreen(Screen):
     def back_to_previous(self):
         app = App.get_running_app()
         previous = getattr(app, 'previous_screen', 'main_menu')
-        self.manager.current = previous
+        app.root.current = previous
+
+        # If return level, open popup pause
+        if previous.startswith('level'):
+            app.is_paused = True
+            if hasattr(app.root.get_screen(previous), 'level_contents'):
+                app.root.get_screen(previous).level_contents.paused = True
+            popup = Factory.PausePopup()
+            popup.open()
 
 class SettingScreen(Screen):
     def __init__(self, **kwargs):
@@ -88,7 +96,15 @@ class SettingScreen(Screen):
     def back_to_previous(self):
         app = App.get_running_app()
         previous = getattr(app, 'previous_screen', 'main_menu')
-        self.manager.current = previous
+        app.root.current = previous
+
+        # If return level, open popup pause
+        if previous.startswith('level'):
+            app.is_paused = True
+            if hasattr(app.root.get_screen(previous), 'level_contents'):
+                app.root.get_screen(previous).level_contents.paused = True
+            popup = Factory.PausePopup()
+            popup.open()
 
 class PausePopup(Popup):
     def __init__(self, **kwargs):
@@ -97,25 +113,31 @@ class PausePopup(Popup):
     def resume_game(self):
         app = App.get_running_app()
         app.is_paused = False
-        # ✅ Resume logic: reset pause flag trong LevelContents
+        # Resume logic: reset pause flag trong LevelContents
         if hasattr(app.root.get_screen(app.current_playing_screen), 'level_contents'):
             app.root.get_screen(app.current_playing_screen).level_contents.paused = False
         self.dismiss()
 
     def go_to_guide(self):
         app = App.get_running_app()
-        app.is_paused = False
-        if hasattr(app.root.get_screen(app.current_playing_screen), 'level_contents'):
-            app.root.get_screen(app.current_playing_screen).level_contents.paused = False
+        screen = app.root.get_screen(app.current_playing_screen)
+        if hasattr(screen, 'level_contents'):
+            puzzle = getattr(screen.level_contents, 'active_puzzle_popup', None)
+            if puzzle and getattr(puzzle, 'popup', None):
+                puzzle.popup.dismiss()
+                puzzle.show_prompt = False
         app.previous_screen = app.current_playing_screen
         self.dismiss()
         app.root.current = 'guide'
 
     def open_settings(self):
         app = App.get_running_app()
-        app.is_paused = False
-        if hasattr(app.root.get_screen(app.current_playing_screen), 'level_contents'):
-            app.root.get_screen(app.current_playing_screen).level_contents.paused = False
+        screen = app.root.get_screen(app.current_playing_screen)
+        if hasattr(screen, 'level_contents'):
+            puzzle = getattr(screen.level_contents, 'active_puzzle_popup', None)
+            if puzzle and getattr(puzzle, 'popup', None):
+                puzzle.popup.dismiss()
+                puzzle.show_prompt = False
         app.previous_screen = app.current_playing_screen
         self.dismiss()
         app.root.current = 'settings'
@@ -130,7 +152,6 @@ class PausePopup(Popup):
 
     def quit_game(self):
         App.get_running_app().stop()
-
 
 class ArtifactHunterApp(App):
     current_playing_screen = None

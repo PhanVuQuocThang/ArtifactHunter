@@ -50,6 +50,7 @@ class LevelContents(BaseLevelContents):
         super().__init__(**kwargs)
         self.paused = False     # Flag to stop game
         self.player = Player(x=100, y=200, width=40, height=40)
+        self.active_puzzle_popup = None
         
         # Lists for bullets, particles, enemies
         self.projectiles = []

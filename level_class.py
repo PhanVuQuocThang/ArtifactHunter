@@ -740,6 +740,13 @@ class PuzzleComponent(Widget):
         if self.show_prompt or self.solved:
             return
 
+        from kivy.app import App
+        if App.get_running_app().is_paused:
+            return
+        
+        if self.level_ref:
+            self.level_ref.active_puzzle_popup = self
+
         if self.locked_until_enemy_dead and any(e.alive() for e in self.level_ref.enemies):
             self.show_hint("🔒 Eliminate all enemies before continuing!")
             return
