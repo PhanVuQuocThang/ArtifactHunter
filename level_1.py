@@ -45,7 +45,9 @@ class Level_1_Class(Screen):
 class LevelContents(BaseLevelContents):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.paused = False     # Flag to stop game
         self.player = Player(x=10, y=40, width=40, height=40)
+        self.active_puzzle_popup = None
         
         # Lists for bullets, particles, enemies
         self.projectiles = []
@@ -121,6 +123,8 @@ class LevelContents(BaseLevelContents):
         pass
 
     def update(self, dt):
+        if self.paused:  # if pause → no process
+            return
         # Process keyboard input for movement
         self.player.process_input()
 
