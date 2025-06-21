@@ -45,7 +45,7 @@ class Level_3_Class(Screen):
 class LevelContents(BaseLevelContents):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.player = Player(x=10, y=40, width=40, height=40)
+        self.player = Player(x=10, y=1000, width=40, height=40)
         
         # Lists for bullets, particles, enemies
         self.projectiles = []
@@ -105,6 +105,7 @@ class LevelContents(BaseLevelContents):
 
             (120, 760 - 80, 2, 1),
             (240, 840 - 80, 2, 1),
+            (120, 800, 1, 1),
             (240, 960 - 80, 10, 1),
 
             (780, 720, 8, 1),
