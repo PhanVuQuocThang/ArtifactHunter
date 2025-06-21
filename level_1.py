@@ -3,8 +3,7 @@ from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.clock import Clock
 
-from level_class import Player, Platform, BaseLevelContents,Artifact, Enemy
-
+from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent
 
 class Level_1_Class(Screen):
     """
@@ -13,24 +12,34 @@ class Level_1_Class(Screen):
     Always override methods on_enter and on_leave of class Screen.
     Set frame rate (FPS) only in on_enter, not in __init__.
     """
+    
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.level_contents = None
         self.update_event = None
+        self.initialized = False    # Flag to ensure the level is initialized only once
 
     # Overriding Kivy-defined on_enter
     def on_enter(self, *args):
         # Initialize level
         print("Entering level 1, press Q to exit")
-        self.level_contents = LevelContents()
-        self.add_widget(self.level_contents)
+        if not self.initialized:
+            self.level_contents = LevelContents()
+            self.add_widget(self.level_contents)
+            self.initialized = True
+        else:
+             # Restore keyboard input if re-entering
+            self.level_contents.player.setup_keyboard()
         # Frame rate: 60FPS
         self.update_event = Clock.schedule_interval(self.level_contents.update, 1/60)
-
+    
     # Overriding Kivy-defined on_leave
     def on_leave(self, *args):
         print("Leaving level 1 ")
-        self.level_contents.player.cleanup()
+
+        if hasattr(self.level_contents, "player"):
+            self.level_contents.player.cleanup()
+
         if self.update_event:
             self.update_event.cancel()
             self.update_event = None
@@ -40,6 +49,12 @@ class LevelContents(BaseLevelContents):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.player = Player(x=100, y=200, width=40, height=40)
+        
+        # Lists for bullets, particles, enemies
+        self.projectiles = []
+        self.particles = []
+        self.enemies = []
+
         self.player.inventory_add_item("H3nt4i")
         self.player.inventory_add_item("N1gg4")
         self.player.inventory_add_item("Chải mèo")
@@ -50,11 +65,22 @@ class LevelContents(BaseLevelContents):
             x=300, y=200 , width = 40, height = 40
         )
         self.add_widget(artifact)
-        enemy = Enemy(x=500, y=200, width=40, height=40)
+        enemy = Enemy(x=500, y=220, width=40, height=40)
         self.add_widget(enemy)
+        self.enemies.append(enemy) 
         self.platforms = []
 
         self.create_platform()
+
+        # Setup puzzles
+        self.puzzles = []
+        # Add puzzles automaticly for level
+        # Level 1: 1 question
+        # If level  2/3:   PuzzleComponent.get_puzzles_for_level(2/3)
+        for puzzle in PuzzleComponent.get_puzzles_for_level(1):  
+            puzzle.level_ref = self  # So puzzle can check enemies when failed
+            self.puzzles.append(puzzle)
+            self.add_widget(puzzle)
 
     def create_platform(self):
         # Create all platforms for this level
@@ -131,3 +157,26 @@ class LevelContents(BaseLevelContents):
             platform = Platform(x, y, width, height)
             self.platforms.append(platform)
             self.add_widget(platform)
+    
+    def update(self, dt):
+        # Process keyboard input for movement
+        self.player.process_input()
+
+        # update proj
+        for proj in self.projectiles:
+            proj.update(dt, self)
+
+        # update enemy
+        for enemy in self.enemies:
+            enemy.update(dt, self.player, self.platforms, self)
+
+        # Physics and collision checks
+        self.check_collisions()
+        self.player.update(dt)
+
+        # Update puzzle state; remove if solved
+        for puzzle in self.puzzles[:]:
+            puzzle.update()
+            if puzzle.solved:
+                self.remove_widget(puzzle)
+                self.puzzles.remove(puzzle)
