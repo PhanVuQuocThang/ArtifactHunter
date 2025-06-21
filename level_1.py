@@ -45,116 +45,61 @@ class Level_1_Class(Screen):
 class LevelContents(BaseLevelContents):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.player = Player(x=100, y=200, width=40, height=40)
+        self.player = Player(x=0, y=40, width=40, height=40)
         
         # Lists for bullets, particles, enemies
         self.projectiles = []
         self.particles = []
+        self.platforms = []
         self.enemies = []
+        self.puzzles = []
 
         self.player.inventory_add_item("H3nt4i")
         self.player.inventory_add_item("N1gg4")
         self.player.inventory_add_item("Chải mèo")
         self.add_widget(self.player)
-        artifact = Artifact(
-            name="Marioowo",
-            description="Cho Khả năng nhảy đôi.",
-            x=300, y=200 , width = 40, height = 40
-        )
-        self.add_widget(artifact)
-        enemy = Enemy(x=500, y=220, width=40, height=40)
-        self.add_widget(enemy)
-        self.enemies.append(enemy) 
-        self.platforms = []
 
         self.create_platform()
-
-        # Setup puzzles
-        self.puzzles = []
-        # Add puzzles automaticly for level
-        # Level 1: 1 question
-        # If level  2/3:   PuzzleComponent.get_puzzles_for_level(2/3)
-        for puzzle in PuzzleComponent.get_puzzles_for_level(1):  
-            puzzle.level_ref = self  # So puzzle can check enemies when failed
-            self.puzzles.append(puzzle)
-            self.add_widget(puzzle)
+        self.create_puzzle()
+        self.create_enemy()
+        self.create_artifact()
 
     def create_platform(self):
         # Create all platforms for this level
-        ground = Platform(0, 0, Window.width, 40)
+        ground = Platform(
+            x=0, y=0,
+            num_tiles_x=100,
+            num_tiles_y=1,
+            texture_path='assets/sprites/PixelTexturePack/Textures/Tech/HIGHTECHWALL.png'
+        )
         self.platforms.append(ground)
         self.add_widget(ground)
 
         # Floating platforms
         platforms_data = [
-            # Bottom tier - easy jumps from ground (60-120 pixels high)
-            (200, 100, 200, 20),  # Light brown
-            (500, 200, 150, 20),  # Green
-            (100, 300, 120, 20),  # Red
-            (350, 400, 180, 20),  # Blue
-            (600, 280, 100, 20),  # Yellow
-
-            # Additional bottom tier platforms
-            (50, 80, 100, 20),  # Starting area helper
-            (750, 120, 120, 20),  # Right side low platform
-            (450, 320, 80, 20),  # Small connector
-            (150, 180, 90, 20),  # Mid-left connector
-
-            # Middle tier - moderate difficulty (200-350 pixels high)
-            (80, 220, 140, 20),  # Left side climb
-            (300, 260, 100, 20),  # Central stepping stone
-            (520, 340, 110, 20),  # Right side platform
-            (180, 350, 80, 20),  # Narrow jump challenge
-            (680, 240, 90, 20),  # Far right access
-            (420, 280, 70, 20),  # Small connector platform
-            (250, 320, 60, 20),  # Precision jump target
-            (580, 200, 85, 20),  # Bridge platform
-
-            # Upper tier - challenging (400-550 pixels high)
-            (120, 480, 100, 20),  # Left tower top
-            (350, 520, 90, 20),  # Central high platform
-            (600, 460, 110, 20),  # Right side high
-            (250, 440, 80, 20),  # Mid-air stepping stone
-            (480, 500, 70, 20),  # Narrow high platform
-            (50, 420, 75, 20),  # Far left challenge
-            (700, 380, 95, 20),  # Right side upper
-            (320, 480, 60, 20),  # Small precision platform
-
-            # Top tier - expert level (600+ pixels high)
-            (200, 620, 120, 20),  # High central platform
-            (450, 680, 100, 20),  # Very high right
-            (80, 600, 90, 20),  # Left side peak
-            (550, 640, 80, 20),  # Right peak approach
-            (300, 720, 70, 20),  # Highest challenge platform
-            (650, 580, 85, 20),  # Far right high
-            (150, 660, 60, 20),  # Narrow high target
-
-            # Connector platforms for complex routes
-            (400, 360, 50, 20),  # Tiny connector
-            (280, 380, 45, 20),  # Micro platform
-            (520, 420, 55, 20),  # Small link
-            (180, 540, 65, 20),  # Upper connector
-            (480, 580, 50, 20),  # High connector
-            (350, 600, 40, 20),  # Precision connector
-
-            # Secret/bonus area platforms
-            (750, 500, 100, 20),  # Hidden right side
-            (20, 300, 60, 20),  # Secret left alcove
-            (720, 320, 80, 20),  # Bonus right platform
-            (40, 520, 70, 20),  # Secret upper left
-            (680, 600, 90, 20),  # Hidden upper right
-
-            # Moving/dynamic platform positions (static for now)
-            (400, 180, 60, 20),  # Lower moving platform pos
-            (300, 400, 55, 20),  # Mid moving platform pos
-            (500, 560, 65, 20),  # Upper moving platform pos
+            (60, 150, 10, 1),
+            (60, 40, 1, 1),
+            (600, 40, 1, 10),
+            (560, 80, 1, 1),
+            (560, 210, 1, 1),
+            (460, 260, 3, 1)
         ]
 
-        for x, y, width, height in platforms_data:
-            platform = Platform(x, y, width, height)
+        for x, y, num_tiles_x, num_tiles_y in platforms_data:
+            platform = Platform(x, y, num_tiles_x, num_tiles_y,
+                                texture_path='assets/sprites/PixelTexturePack/Textures/Tech/BIGSQUARES.png')
             self.platforms.append(platform)
             self.add_widget(platform)
-    
+
+    def create_enemy(self):
+        pass
+
+    def create_artifact(self):
+        pass
+
+    def create_puzzle(self):
+        pass
+
     def update(self, dt):
         # Process keyboard input for movement
         self.player.process_input()
