@@ -6,6 +6,8 @@ from kivy.core.window import Window
 from kivy.factory import Factory
 
 from level_1 import LevelContents, Level_1_Class
+from level_2 import LevelContents, Level_2_Class
+from level_3 import LevelContents, Level_3_Class
 from level_class import SoundManager
 
 # Set default font
@@ -49,9 +51,9 @@ class LevelSelectionScreen(Screen):
             case 1:
                 self.manager.current = 'level_1'
             case 2:
-                pass
+                self.manager.current = 'level_2'
             case 3:
-                pass
+                self.manager.current = 'level_3'
             case _:
                 print("Invalid")
 
@@ -85,13 +87,13 @@ class SettingScreen(Screen):
     def set_sfx_volume(self, instance, value):
         SoundManager.set_sfx_volume(value / 100)
 
-    def toggle_fullscreen(self, instance):
-        if instance.state == 'down':
-            instance.text = "Windowed"
-            Window.fullscreen = True
-        else:
-            instance.text = "Fullscreen"
-            Window.fullscreen = False
+    # def toggle_fullscreen(self, instance):
+    #     if instance.state == 'down':
+    #         instance.text = "Windowed"
+    #         Window.fullscreen = True
+    #     else:
+    #         instance.text = "Fullscreen"
+    #         Window.fullscreen = False
 
     def back_to_previous(self):
         app = App.get_running_app()
@@ -167,6 +169,8 @@ class ArtifactHunterApp(App):
         sm.add_widget(GuideScreen(name='guide'))
         sm.add_widget(SettingScreen(name='settings'))
         sm.add_widget(Level_1_Class(name='level_1'))
+        sm.add_widget(Level_2_Class(name='level_2'))
+        sm.add_widget(Level_3_Class(name='level_3'))
         return sm
 
     def on_key_down(self, window, key, *args):

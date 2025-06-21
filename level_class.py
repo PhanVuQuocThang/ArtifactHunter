@@ -5,6 +5,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.label import Label
 from kivy.graphics import Rectangle, Color
 from kivy.core.window import Window
+from kivy.core.image import Image as CoreImage
 from kivy.vector import Vector
 from kivy.lang import Builder
 from kivy.clock import Clock
@@ -70,17 +71,44 @@ class Artifact(GameObject):
         print(f"Artifact '{self.name}' collected! Unlocking next level...")
 
 
-class Platform(Widget):
-    def __init__(self, x, y, width, height, **kwargs):
+class OldPlatform(Widget):
+    def __init__(self, x, y, tile_size=40, texture_path=None, **kwargs):
         super().__init__(**kwargs)
+
+        self.size = (tile_size, tile_size)
         self.pos = (x, y)
-        self.size = (width, height)
 
-        # Draw the platform as a brown rectangle
         with self.canvas:
-            Color(0.6, 0.4, 0.2)  # Brown color
-            self.rect = Rectangle(pos=self.pos, size=self.size)
+            if texture_path:
+                texture = CoreImage(texture_path).texture
+                texture.wrap = 'repeat'
+                Color(1, 1, 1, 1)  # Reset tint to white
+                self.rect = Rectangle(texture=texture, pos=self.pos, size=self.size)
+            else:
+                Color(0.6, 0.4, 0.2, 1)  # Default brown color
+                self.rect = Rectangle(pos=self.pos, size=self.size)
 
+        # Keep rect in sync if position changes
+        self.bind(pos=self.update_rect, size=self.update_rect)
+
+    def update_rect(self, *args):
+        self.rect.pos = self.pos
+        self.rect.size = self.size
+
+class Platform(Widget):
+    def __init__(self, x, y, num_tiles_x, num_tiles_y, texture_path, tile_width=40, tile_height=40, **kwargs):
+        super().__init__(**kwargs)
+        self.size = (tile_width * num_tiles_x, tile_height * num_tiles_y)
+        self.pos = (x, y)
+
+        # Load texture
+        texture = CoreImage(texture_path).texture
+        texture.wrap = 'repeat'  # VERY important!
+        texture.uvsize = (num_tiles_x, num_tiles_y)  # Repeat X times; flip Y if needed
+
+        with self.canvas:
+            Color(1, 1, 1, 1)
+            Rectangle(texture=texture, pos=self.pos, size=self.size)
 
 class Entity(Widget):
     """
@@ -153,7 +181,7 @@ class Entity(Widget):
         self.velocity.x = 0
 
 class Player(Entity):
-    def __init__(self, x=0, y=0, width=100, height=100, **kwargs):
+    def __init__(self, x=0, y=0, width=40, height=40, **kwargs):
         super().__init__(x, y, width, height, **kwargs)
         self.inventory = [] # Need to also handle inventory input
         self.inventory_popup = None # Inventory object
@@ -250,8 +278,8 @@ class Player(Entity):
         # self.can_double_jump = self.has_marioowo()
 
         # Temporary solution to exit level. This will change.
-        if 'q' in self.keys_pressed:
-            self.parent.parent.manager.current = 'level_selection'
+        # if 'q' in self.keys_pressed:
+        #     self.parent.parent.manager.current = 'level_selection'
         # Handle jump
         if 'up' in self.keys_pressed or 'w' in self.keys_pressed:
             if self.on_ground:
@@ -492,9 +520,6 @@ class Enemy(Entity):
 
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
-    @abstractmethod
-    def create_platform(self):
-        pass
 
     def check_collisions(self):
         """Check collisions between player and platforms."""
@@ -566,6 +591,7 @@ class BaseLevelContents(Widget):
 
     def cleanup(self):
         """Clean up game resources"""
+        self.clear_widgets()
         if hasattr(self.player, 'cleanup'):
             self.player.cleanup()
 
