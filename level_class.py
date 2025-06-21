@@ -575,9 +575,10 @@ class BaseLevelContents(Widget):
                     self.player.velocity.y = -50 # Makes the player fall faster
 
                 # Player is touching the sides of platform
-                elif self.player.velocity.x != 0 and (min_overlap == overlap_right or min_overlap == overlap_left):
+                elif self.player.velocity.x > 0 and min_overlap == overlap_left:
                     self.player.velocity.x = 0
-                break # Stop checking other platforms after first collision
+                elif self.player.velocity.x < 0 and min_overlap == overlap_right:
+                    self.player.velocity.x = 0
 
         self.player.on_ground = on_ground_temp
 
@@ -591,7 +592,6 @@ class BaseLevelContents(Widget):
 
     def cleanup(self):
         """Clean up game resources"""
-        self.clear_widgets()
         if hasattr(self.player, 'cleanup'):
             self.player.cleanup()
 
