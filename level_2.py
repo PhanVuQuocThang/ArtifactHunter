@@ -5,7 +5,7 @@ from kivy.clock import Clock
 
 from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent
 
-class Level_1_Class(Screen):
+class Level_2_Class(Screen):
     """
     All other Level_X_Class should follow this structure.
     When entering the game, this should be called and registered as a Screen for ScreenManager.
@@ -22,7 +22,7 @@ class Level_1_Class(Screen):
     # Overriding Kivy-defined on_enter
     def on_enter(self, *args):
         # Initialize level
-        print("Entering level 1, press Q to exit")
+        print("Entering level 2, press Q to exit")
         if not self.initialized:
             self.level_contents = LevelContents()
             self.add_widget(self.level_contents)
@@ -35,7 +35,7 @@ class Level_1_Class(Screen):
     
     # Overriding Kivy-defined on_leave
     def on_leave(self, *args):
-        print("Leaving level 1 ")
+        print("Leaving level 2 ")
         self.level_contents.cleanup()
         if self.update_event:
             self.update_event.cancel()
@@ -77,32 +77,54 @@ class LevelContents(BaseLevelContents):
 
         # Floating platforms
         platforms_data = [
-            (160, 80, 2, 1),
-            (440, 80 * 2, 2, 1),
-            (160, 80 * 3, 2, 1),
-            (440, 80 * 4, 2, 1),
-            (160, 80 * 5, 2, 1),
-            (440, 80 * 6, 2, 1),
-
-            (560, 40, 1, 14),
-            (640, 120, 1, 14),
-
-            (160 + 600, 80, 2, 1),
-            (440 + 600, 80 * 2, 2, 1),
-            (160 + 600, 80 * 3, 2, 1),
-            (440 + 600, 80 * 4, 2, 1),
-            (160 + 600, 80 * 5, 2, 1),
-            (440 + 600, 80 * 6, 2, 1),
-            (160 + 600, 80 * 7, 2, 1),
-
-            (0, 120 + 40 * 14, 16, 1),
-
-            (160, 760, 2, 1),
-            (440, 840, 2, 1),
-            (440 + 320, 840, 2, 1),
-            (440 + 320 * 2, 840, 2, 1),
-
-            (440 + 400 * 2, 40, 1, 22)
+            (60, 150, 10, 1),
+            (60, 40, 1, 1),
+            (0, 230, 2, 1),
+            (600, 40, 1, 11),
+            (640, 440, 1, 1),
+            (680, 440, 1, 3),
+            (560, 80, 1, 1),
+            (400, 400, 3, 1),
+            (260, 350, 1, 1),
+            (160, 300, 1, 1),
+            (600, 530, 12, 1),
+            (770, 440, 10, 1),
+            (1130, 530, 1, 1),
+            (1170, 440, 1, 8),
+            (690, 360, 5, 1),
+            (770, 400, 3, 2),
+            (640, 280, 3, 1),
+            (770, 80, 1, 1),
+            (890, 160, 1, 1),
+            (890, 260, 1, 5),
+            (1010, 120, 1, 1),
+            (1130, 200, 1, 1),
+            (930, 260, 2, 1),
+            (1130, 320, 2, 1),
+            (1290, 400, 2, 1),
+            (1290, 560, 2, 1),
+            (1290, 720, 2, 1),
+            (1210, 480, 2, 1),
+            (1210, 640, 2, 1),
+            (1370, 40, 1, 21),
+            (320, 760, 1, 1),
+            (480, 720, 18, 1),
+            (480, 720, 1, 2),
+            (480, 850, 23, 1),
+            (1610, 800, 1, 5),
+            (1610, 680, 1, 1),
+            (1410, 640, 5, 1),
+            (1700, 720, 1, 1),
+            (1800, 640, 1, 4),
+            (1500, 510, 11, 1),
+            (1370, 320, 12, 1),
+            (1530, 360, 1, 2),
+            (1670, 360, 1, 1),
+            (1810, 360, 1, 2),
+            (1530, 160, 8, 1),
+            (1810, 200, 1, 3),
+            (1530, 80, 1, 2),
+            (1410, 80, 1, 1)
         ]
 
         for x, y, num_tiles_x, num_tiles_y in platforms_data:
