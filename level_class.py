@@ -22,23 +22,34 @@ class PlaceHolder(Widget):
     """
     Acts as placeholder for any object. Has no other functionality. This class shouldn't be inherited.
     """
-    def __init__(self, position=(0, 0), size=(40, 40), color=(1, 1, 1), **kwargs):
+    def __init__(self, position=(0, 0), size=(40, 40), color=(1, 1, 1), texture_path=None, **kwargs):
         super().__init__(**kwargs)
 
         # Set widget position and size
         self.pos = position
         self.size = size
 
-        # Draw the square
         with self.canvas:
-            Color(*color)  # Use provided color (RGB values 0-1)
-            self.rect = Rectangle(pos=position, size=size)
+            if texture_path:
+                texture = CoreImage(texture_path).texture
+                Color(1, 1, 1, 1)
+                self.rect = Rectangle(texture=texture, pos=position, size=size)
+            else:
+                Color(*color)
+                self.rect = Rectangle(pos=position, size=size)
 
-    def update(self, position, size, color=None):
-        """Update the square's position, size, and optionally color"""
+    def update(self, position, size, color=None, texture_path=None):
+        """Update the square's position, size, and optionally color or texture"""
         self.rect.pos = position
         self.rect.size = size
-        if color:
+        if texture_path:
+            texture = CoreImage(texture_path).texture
+            texture.wrap = 'repeat'
+            texture.uvsize = (1, 1)  # Adjust as needed
+            self.rect.texture = texture
+        elif color:
+            # Remove and redraw with new color (texture will be removed)
+            self.canvas.remove(self.rect)
             with self.canvas:
                 Color(*color)
                 self.rect = Rectangle(pos=position, size=size)
@@ -59,41 +70,6 @@ class GameObject(Widget):
         self.rect.size = self.size
 
 
-class Artifact(GameObject):
-    """
-    Represents a collectible artifact that grants the player special abilities
-    and is required to complete a level.
-    """
-    def __init__(self, name, description, x=0, y=0, width=100, height=100, **kwargs):
-        super().__init__(x, y, width, height, **kwargs)
-        self.is_collected = False
-        self.name = name
-        self.description = description
-
-        # Draw the artifact differently (e.g., gold color)
-        with self.canvas:
-            Color(1, 0.84, 0)  # Gold
-            self.rect = Rectangle(pos=self.pos, size=self.size)
-
-    def pick_up(self, player):
-        """
-        Add this artifact to the player's inventory and mark it as collected.
-        """
-        if not self.is_collected:
-            player.inventory_add_item(self)
-            self.is_collected = True
-            self.parent.remove_widget(self)  # Remove from scene if needed
-
-    def unlock_level(self):
-        """
-        Logic to unlock the next level.
-        You can implement actual screen/level management elsewhere.
-        """
-
-        if not self.is_collected:
-            print(f"Cannot unlock level. Artifact '{self.name}' not collected.")
-            return
-        print(f"Artifact '{self.name}' collected! Unlocking next level...")
 
 
 class OldPlatform(Widget):
@@ -412,6 +388,7 @@ class PlayerInventory(Popup):
         self.inventory_data = inventory
 
     def on_open(self):
+        self.apply_item_effects(self.inventory_data)
         self.populate_inventory(self.inventory_data)
 
     def populate_inventory(self, inventory):
@@ -435,11 +412,98 @@ class PlayerInventory(Popup):
                 height=40
             )
             container.add_widget(empty_label)
+
+    def apply_item_effects(self, inventory):
+        """Apply effects based on items in inventory"""
+        player = self.get_player_instance()
+        if not player:
+            return
+
+        # Reset to default values before applying effects
+        player.can_double_jump = False
+        player.damage = 10  # Default damage
+        player.max_health = 100  # Default health
+
+        for item in inventory:
+            name = getattr(item, 'name', str(item))
+            if name.lower() == 'sky rocket':
+                player.can_double_jump = True
+            elif name.lower() == 'acient shotgun':
+                player.damage = 20  # 10 * 2
+            elif name.lower() == 'meat armor':
+                player.max_health = 200  # 100 * 2
+                player.current_health = min(player.current_health, player.max_health)
+
+    def get_player_instance(self):
+        # Try to find the player instance from the popup's parent chain
+        parent = self.parent
+        while parent:
+            if hasattr(parent, 'player'):
+                return parent.player
+            parent = getattr(parent, 'parent', None)
+        return None
+class Artifact(Entity):
+    """
+    Represents a collectible artifact that grants the player special abilities
+    and is required to complete a level.
+    """
+    def __init__(self, name, x=0, y=0, width=100, height=100, texture_path=None, **kwargs):
+        super().__init__(x, y, width, height, **kwargs)
+        self.is_collected = False
+        self.name = name  # Name of the artifact
+        self.texture_path = texture_path
+
+        # Draw the artifact
+        with self.canvas:
+            if self.texture_path:
+                texture = CoreImage(self.texture_path).texture
+                texture.wrap = 'repeat'  # Allow texture to repeat
+                Color(1, 1, 1, 1)
+                self.rect = Rectangle(texture=texture, pos=self.pos, size=self.size)
+            else:
+                Color(1, 0.84, 0)  # Gold
+                self.rect = Rectangle(pos=self.pos, size=self.size)
+
+        # Bind position and size changes to update the rectangle
+        self.bind(pos=self.update_graphics, size=self.update_graphics)
+
+    def update_graphics(self, *args):
+        """Update the visual representation when position or size changes"""
+        self.rect.pos = self.pos
+        self.rect.size = self.size
+
+
+    def pick_up(self, player):
+        """
+        Check collision with player and pick up the artifact if collided.
+        """
+        if self.is_collected:
+            return  # Prevent picking up the same artifact multiple times
+
+        if self.collide_widget(player):
+            self.is_collected = True
+            if hasattr(player, "inventory_add_item"):
+                player.inventory_add_item(self)
+            # Optionally, remove the artifact from the screen
+            if self.parent:
+                self.parent.remove_widget(self)
+            print(f"Artifact '{self.name}' collected by player!")
+
+    def unlock_level(self):
+        """
+        Logic to unlock the next level.
+        You can implement actual screen/level management elsewhere.
+        """
+        if not self.is_collected:
+            print(f"Cannot unlock level. Artifact '{self.name}' not collected.")
+            return
+        print(f"Artifact '{self.name}' collected! Unlocking next level...")
+
 class Enemy(Entity):
     """
     Represents an enemy that can move and attack the player.
     """
-    def __init__(self, x=0, y=0, width=100, height=100, **kwargs):
+    def __init__(self, x=0, y=0, width=100, height=100, texture_path=None, **kwargs):
         super().__init__(x, y, width, height, **kwargs)
         self.health = 100
         self.attack_damage = 1
@@ -448,13 +512,20 @@ class Enemy(Entity):
         self.move_speed = 150  # Enemy moves slower than player
 
         # Cooldown bắn
-        self.shoot_interval = 2.0  # secondsseconds
+        self.shoot_interval = 2.0  # seconds
         self.last_shot_time = Clock.get_boottime()
 
-        # Draw the enemy as a red rectangle
+        self.texture_path = texture_path
+
+        # Draw the enemy as a red rectangle or with texture if provided
         with self.canvas:
-            Color(1, 0, 0)  # Red color
-            self.rect = Rectangle(pos=self.pos, size=self.size)
+            if self.texture_path:
+                texture = CoreImage(self.texture_path).texture
+                Color(1, 1, 1, 1)
+                self.rect = Rectangle(texture=texture, pos=self.pos, size=self.size)
+            else:
+                Color(1, 0, 0)  # Red color
+                self.rect = Rectangle(pos=self.pos, size=self.size)
 
         # Bind position changes to update the rectangle
         self.bind(pos=self.update_graphic, size=self.update_graphic)
@@ -553,13 +624,12 @@ class Enemy(Entity):
     def update_graphic(self, *args):
         self.rect.pos = self.pos
         self.rect.size = self.size
-    
 
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
 
     def check_collisions(self):
-        """Check collisions between player and platforms."""
+        """Check collisions between player and platforms and artifacts."""
         # Type hinting for IDEs so it's less of a pain to work with.
         # Doesn't interrupt the code with or without these.
         self.player : Player

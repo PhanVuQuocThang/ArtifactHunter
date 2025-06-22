@@ -184,14 +184,14 @@ class LevelContents(BaseLevelContents):
             (1880, 40)
         ]
 
-        for position in enemy_data:
-            enemy = PlaceHolder(position=position, color=(1, 0, 0))
+        for x,y in enemy_data:
+            enemy = Enemy(x=x, y=y, width=40, height=40, texture_path='assets/sprites/Characters/Enemy.png')
             self.enemies.append(enemy)
             self.add_widget(enemy)
 
     def create_artifact(self):
-        artifact_data = (1260, 520)
-        artifact = PlaceHolder(position=artifact_data, color=(1, 1, 0))
+        artifact_data = (40, 40)
+        artifact = Artifact(name="Acient Shotgun",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path='assets/sprites/Artifacts/DMG.png')
         self.artifact = artifact
         self.add_widget(artifact)
 
