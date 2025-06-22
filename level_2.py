@@ -186,6 +186,7 @@ class LevelContents(BaseLevelContents):
         artifact_data = (650, 40)
         artifact = Artifact(name="meat armor",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path='assets/sprites/Artifacts/HEALTH.png')
         self.artifact = artifact
+        self.platforms.append(artifact)
         self.add_widget(artifact)
 
 

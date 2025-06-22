@@ -56,6 +56,7 @@ class LevelContents(BaseLevelContents):
         self.player = Player(x=10, y=40, width=40, height=40)
         self.paused = False     # Flag to stop game
         self.active_puzzle_popup = None
+        self.artifact = None
         
         # Lists for bullets, particles, enemies
         self.projectiles = []
@@ -63,8 +64,10 @@ class LevelContents(BaseLevelContents):
         self.platforms = []
         self.enemies = []
         self.puzzles = []
+        self.entities = []
         self.add_widget(self.player)
 
+        self.entities.append(self.player)
         self.create_platform()
         self.create_puzzle()
         self.create_enemy()
@@ -128,14 +131,15 @@ class LevelContents(BaseLevelContents):
         for x, y in enemy_data:
             enemy = Enemy(x=x, y=y, width=40, height=40, texture_path='assets/sprites/Characters/Enemy.png')
             self.enemies.append(enemy)
+            self.entities.append(enemy)
             self.add_widget(enemy)
 
     def create_artifact(self):
         artifact_data = (700, 40)
-        artifact = Artifact(name="sky rocket",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path='assets/sprites/Artifacts/DOUBLE_JUMP.png')
+        artifact = Artifact(name="Sky Rocket",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path='assets/sprites/Artifacts/DOUBLE_JUMP.png')
         self.artifact = artifact
+        self.platforms.append(artifact) # Workaround for collision checking
         self.add_widget(artifact)
-
 
     def create_puzzle(self):
         pass

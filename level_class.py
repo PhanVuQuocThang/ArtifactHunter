@@ -1,4 +1,5 @@
 """This file contains all the main classes that'll be used across the project."""
+from typing import List
 
 from kivy.uix.widget import Widget
 from kivy.uix.popup import Popup
@@ -141,6 +142,7 @@ class Entity(Widget):
         self.weapon = None
         self.damage = 0
         self.name = ""
+        self.last_direction = Vector(1, 0)
 
     def update_graphic(self, *args):
         self.rect.pos = self.pos
@@ -198,6 +200,7 @@ class Player(Entity):
         self.inventory = [] # Need to also handle inventory input
         self.inventory_popup = None # Inventory object
         self.health = 3
+        self.airborne_with_no_movement_input = False # This is for animation, look at the update method
 
         self.last_direction = Vector(1, 0)
         self.last_shot_time = Clock.get_boottime()  # For cooldown
@@ -210,16 +213,68 @@ class Player(Entity):
         self.keys_pressed = set()
         self._keyboard = None
 
-        # Draw the player as a blue rectangle
+        # Set up keyboard input
+        self.setup_keyboard()
+
+        # Animation setup
+        self.current_animation = 'move_right'
+        self.frame_index = 0
+        self.animation_timer = 0
+        self.frame_duration = 0.2  # Seconds per frame
+
+        # Load your sprite images (replace with your actual image paths)
+        self.sprites = {
+            'idle': [
+                CoreImage('assets/sprites/Characters/slime_character/slime_idle.png').texture
+            ],
+            'move_left': [
+                CoreImage('assets/sprites/Characters/slime_character/slime_left.png').texture
+            ],
+            'move_right': [
+                CoreImage('assets/sprites/Characters/slime_character/slime_right.png').texture
+            ],
+            'jump': [CoreImage('assets/sprites/Characters/slime_character/slime_jump.png').texture]  # Single frame for jump
+        }
+
+        # Draw the player
         with self.canvas:
-            Color(0, 0, 1)  # Blue color
-            self.rect = Rectangle(pos=self.pos, size=self.size)
+            Color(1, 1, 1)  # White color to show texture properly
+            self.rect = Rectangle(pos=self.pos, size=self.size,
+                                  texture=self.sprites['idle'][0])
 
         # Bind position changes to update the rectangle
         self.bind(pos=self.update_graphics, size=self.update_graphics)
 
-        # Set up keyboard input
-        self.setup_keyboard()
+    def update_animation(self, dt):
+        """Update sprite animation frames"""
+        self.animation_timer += dt
+
+        if self.animation_timer >= self.frame_duration:
+            self.animation_timer = 0
+            frames = self.sprites[self.current_animation]
+
+            if len(frames) > 1:  # Only animate if multiple frames
+                self.frame_index = (self.frame_index + 1) % len(frames)
+                self.rect.texture = frames[self.frame_index]
+
+    def set_animation(self, animation_name):
+        """Change animation state"""
+        if animation_name != self.current_animation:
+            self.current_animation = animation_name
+            self.frame_index = 0
+            self.animation_timer = 0
+            # Set initial texture
+            self.rect.texture = self.sprites[animation_name][0]
+
+    def update(self, dt):
+        super().update(dt)
+        # Determine animation based on movement state
+        if self.last_direction.x < 0:
+            self.set_animation('move_left')
+        elif self.last_direction.x > 0:
+            self.set_animation('move_right')
+        else:
+            self.set_animation('idle')
 
     def setup_keyboard(self):
         """Initialize keyboard input handling"""
@@ -247,7 +302,7 @@ class Player(Entity):
             self.keys_pressed.remove(key)
 
     def update_graphics(self, *args):
-        """Update the visual representation"""
+        """Update rectangle position and size"""
         self.rect.pos = self.pos
         self.rect.size = self.size
 
@@ -258,7 +313,7 @@ class Player(Entity):
         Clock.unschedule(self.end_invincibility)
         Clock.unschedule(self.restore_color)
 
-    def toggle_inventory(self, pressed_key: str='b'):
+    def toggle_inventory(self, pressed_key:str='b'):
         """Open the inventory popup. If the popup is already opened, close the popup."""
         self.keys_pressed.remove(pressed_key)
         if self.inventory_popup and self.inventory_popup._window:
@@ -289,12 +344,6 @@ class Player(Entity):
         if getattr(self.parent, "paused", False):
             return
         """Process continuous key presses (called every frame)"""
-        # # Check for Marioowo in inventory to enable double jump
-        # self.can_double_jump = self.has_marioowo()
-
-        # Temporary solution to exit level. This will change.
-        # if 'q' in self.keys_pressed:
-        #     self.parent.parent.manager.current = 'level_selection'
         # Handle jump
         if 'up' in self.keys_pressed or 'w' in self.keys_pressed:
             if self.on_ground:
@@ -303,9 +352,9 @@ class Player(Entity):
             #     self.jump()
             #     self.has_double_jumped = True
         # Handle open inventory
-        if 'b' in self.keys_pressed:
-            self.toggle_inventory()
-            print("Player open inventory")
+        # if 'b' in self.keys_pressed:
+        #     self.toggle_inventory()
+        #     print("Player open inventory")
         # Handle shooting
         if 'spacebar' in self.keys_pressed:
             self.shoot_towards_cursor()
@@ -375,22 +424,22 @@ class Player(Entity):
         self.parent.projectiles.append(proj)
 
         # Play shooting sound and trigger animation
-        SoundManager.play("shoot") 
-        self.animate_attack()
+        SoundManager.play("shoot")
+        # self.animate_attack()
 
-    def animate_attack(self):
-        # Simple visual feedback (flash color)
-        self.canvas.remove(self.rect)
-        with self.canvas:
-            Color(1, 1, 0)  # yellow when attacking
-            self.rect = Rectangle(pos=self.pos, size=self.size)
-        Clock.schedule_once(self.restore_color, 0.1)
-    # Restore player's original color (blue) after attack animation
-    def restore_color(self, dt):
-        self.canvas.remove(self.rect)
-        with self.canvas:
-            Color(0, 0, 1)
-            self.rect = Rectangle(pos=self.pos, size=self.size)
+    # def animate_attack(self):
+    #     # Simple visual feedback (flash color)
+    #     self.canvas.remove(self.rect)
+    #     with self.canvas:
+    #         Color(1, 1, 0)  # yellow when attacking
+    #         self.rect = Rectangle(pos=self.pos, size=self.size)
+    #     Clock.schedule_once(self.restore_color, 0.1)
+    # # Restore player's original color (blue) after attack animation
+    # def restore_color(self, dt):
+    #     self.canvas.remove(self.rect)
+    #     with self.canvas:
+    #         Color(0, 0, 1)
+    #         self.rect = Rectangle(pos=self.pos, size=self.size)
 
 ####
 Builder.load_file('inventory.kv')
@@ -516,16 +565,17 @@ class Enemy(Entity):
     """
     Represents an enemy that can move and attack the player.
     """
-    def __init__(self, x=0, y=0, width=100, height=100, texture_path=None, **kwargs):
+    def __init__(self, x=0, y=0, width=100, height=100, texture_path=None, shoot_cooldown = 2.0, **kwargs):
         super().__init__(x, y, width, height, **kwargs)
-        self.health = 100
-        self.attack_damage = 1
+        self.max_health = 30
+        self.current_health = 30
+        self.attack_damage = 10
         self.is_alive = True
         self.direction = 1  # 1 for right, -1 for left
-        self.move_speed = 150  # Enemy moves slower than player
+        self.move_speed = 0  # Enemy moves slower than player
 
         # Cooldown bắn
-        self.shoot_interval = 2.0  # seconds
+        self.shoot_interval = shoot_cooldown  # seconds
         self.last_shot_time = Clock.get_boottime()
 
         self.texture_path = texture_path
@@ -648,7 +698,7 @@ class BaseLevelContents(Widget):
         # Type hinting for IDEs so it's less of a pain to work with.
         # Doesn't interrupt the code with or without these.
         self.player : Player
-        self.platform : Platform
+        self.platforms : List[Platform]
 
         player_rect = (
             self.player.pos[0],
@@ -677,6 +727,11 @@ class BaseLevelContents(Widget):
                 if isinstance(platform, DeathTrap):
                     self.player.current_health -= platform.damage
                     print("Player health:", self.player.current_health)
+
+                if isinstance(platform, Artifact):
+                    self.player.inventory_add_item(platform.name)
+                    self.remove_widget(platform)
+                    self.platforms.remove(platform)
 
                 # Calculate overlap distances for each direction
                 # Read the comments to prevent misused of these variables. They follow standard naming for overlapping.
