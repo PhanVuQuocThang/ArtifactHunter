@@ -140,6 +140,7 @@ class Entity(Widget):
         self.weapon = None
         self.damage = 0
         self.name = ""
+        self.last_direction = Vector(1, 0)
 
     def update_graphic(self, *args):
         self.rect.pos = self.pos
@@ -197,6 +198,7 @@ class Player(Entity):
         self.inventory = [] # Need to also handle inventory input
         self.inventory_popup = None # Inventory object
         self.health = 3
+        self.airborne_with_no_movement_input = False # This is for animation, look at the update method
 
         self.last_direction = Vector(1, 0)
         self.last_shot_time = Clock.get_boottime()  # For cooldown
@@ -209,16 +211,68 @@ class Player(Entity):
         self.keys_pressed = set()
         self._keyboard = None
 
-        # Draw the player as a blue rectangle
+        # Set up keyboard input
+        self.setup_keyboard()
+
+        # Animation setup
+        self.current_animation = 'move_right'
+        self.frame_index = 0
+        self.animation_timer = 0
+        self.frame_duration = 0.2  # Seconds per frame
+
+        # Load your sprite images (replace with your actual image paths)
+        self.sprites = {
+            'idle': [
+                CoreImage('assets/sprites/Characters/slime_character/slime_idle.png').texture
+            ],
+            'move_left': [
+                CoreImage('assets/sprites/Characters/slime_character/slime_left.png').texture
+            ],
+            'move_right': [
+                CoreImage('assets/sprites/Characters/slime_character/slime_right.png').texture
+            ],
+            'jump': [CoreImage('assets/sprites/Characters/slime_character/slime_jump.png').texture]  # Single frame for jump
+        }
+
+        # Draw the player
         with self.canvas:
-            Color(0, 0, 1)  # Blue color
-            self.rect = Rectangle(pos=self.pos, size=self.size)
+            Color(1, 1, 1)  # White color to show texture properly
+            self.rect = Rectangle(pos=self.pos, size=self.size,
+                                  texture=self.sprites['idle'][0])
 
         # Bind position changes to update the rectangle
         self.bind(pos=self.update_graphics, size=self.update_graphics)
 
-        # Set up keyboard input
-        self.setup_keyboard()
+    def update_animation(self, dt):
+        """Update sprite animation frames"""
+        self.animation_timer += dt
+
+        if self.animation_timer >= self.frame_duration:
+            self.animation_timer = 0
+            frames = self.sprites[self.current_animation]
+
+            if len(frames) > 1:  # Only animate if multiple frames
+                self.frame_index = (self.frame_index + 1) % len(frames)
+                self.rect.texture = frames[self.frame_index]
+
+    def set_animation(self, animation_name):
+        """Change animation state"""
+        if animation_name != self.current_animation:
+            self.current_animation = animation_name
+            self.frame_index = 0
+            self.animation_timer = 0
+            # Set initial texture
+            self.rect.texture = self.sprites[animation_name][0]
+
+    def update(self, dt):
+        super().update(dt)
+        # Determine animation based on movement state
+        if self.last_direction.x < 0:
+            self.set_animation('move_left')
+        elif self.last_direction.x > 0:
+            self.set_animation('move_right')
+        else:
+            self.set_animation('idle')
 
     def setup_keyboard(self):
         """Initialize keyboard input handling"""
@@ -246,7 +300,7 @@ class Player(Entity):
             self.keys_pressed.remove(key)
 
     def update_graphics(self, *args):
-        """Update the visual representation"""
+        """Update rectangle position and size"""
         self.rect.pos = self.pos
         self.rect.size = self.size
 
@@ -362,22 +416,22 @@ class Player(Entity):
         self.parent.projectiles.append(proj)
 
         # Play shooting sound and trigger animation
-        SoundManager.play("shoot") 
-        self.animate_attack()
+        SoundManager.play("shoot")
+        # self.animate_attack()
 
-    def animate_attack(self):
-        # Simple visual feedback (flash color)
-        self.canvas.remove(self.rect)
-        with self.canvas:
-            Color(1, 1, 0)  # yellow when attacking
-            self.rect = Rectangle(pos=self.pos, size=self.size)
-        Clock.schedule_once(self.restore_color, 0.1)
-    # Restore player's original color (blue) after attack animation
-    def restore_color(self, dt):
-        self.canvas.remove(self.rect)
-        with self.canvas:
-            Color(0, 0, 1)
-            self.rect = Rectangle(pos=self.pos, size=self.size)
+    # def animate_attack(self):
+    #     # Simple visual feedback (flash color)
+    #     self.canvas.remove(self.rect)
+    #     with self.canvas:
+    #         Color(1, 1, 0)  # yellow when attacking
+    #         self.rect = Rectangle(pos=self.pos, size=self.size)
+    #     Clock.schedule_once(self.restore_color, 0.1)
+    # # Restore player's original color (blue) after attack animation
+    # def restore_color(self, dt):
+    #     self.canvas.remove(self.rect)
+    #     with self.canvas:
+    #         Color(0, 0, 1)
+    #         self.rect = Rectangle(pos=self.pos, size=self.size)
 
 ####
 Builder.load_file('inventory.kv')
