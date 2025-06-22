@@ -1,9 +1,11 @@
 from kivy.uix.widget import Widget
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.graphics import Rectangle, Color
 from kivy.clock import Clock
 
-from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent
+from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap
+
 
 class Level_1_Class(Screen):
     """
@@ -45,8 +47,8 @@ class Level_1_Class(Screen):
 class LevelContents(BaseLevelContents):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.paused = False     # Flag to stop game
         self.player = Player(x=10, y=40, width=40, height=40)
+        self.paused = False     # Flag to stop game
         self.active_puzzle_popup = None
         
         # Lists for bullets, particles, enemies
@@ -55,10 +57,6 @@ class LevelContents(BaseLevelContents):
         self.platforms = []
         self.enemies = []
         self.puzzles = []
-
-        self.player.inventory_add_item("H3nt4i")
-        self.player.inventory_add_item("N1gg4")
-        self.player.inventory_add_item("Chải mèo")
         self.add_widget(self.player)
 
         self.create_platform()
@@ -72,7 +70,7 @@ class LevelContents(BaseLevelContents):
             x=0, y=0,
             num_tiles_x=100,
             num_tiles_y=1,
-            texture_path='assets/sprites/PixelTexturePack/Textures/Tech/HIGHTECHWALL.png'
+            texture_path='assets/sprites/PixelTexturePack/Textures/Rocks/GOLDROCKS.png'
         )
         self.platforms.append(ground)
         self.add_widget(ground)
@@ -109,15 +107,29 @@ class LevelContents(BaseLevelContents):
 
         for x, y, num_tiles_x, num_tiles_y in platforms_data:
             platform = Platform(x, y, num_tiles_x, num_tiles_y,
-                                texture_path='assets/sprites/PixelTexturePack/Textures/Tech/BIGSQUARES.png')
+                                texture_path='assets/sprites/PixelTexturePack/Textures/Elements/SAND.png')
             self.platforms.append(platform)
             self.add_widget(platform)
 
     def create_enemy(self):
-        pass
+        enemy_data = [
+            (480, 520),
+            (1200, 40),
+            (640, 680),
+            (1500, 40)
+        ]
+
+        for position in enemy_data:
+            enemy = PlaceHolder(position=position, color=(1, 0, 0))
+            self.enemies.append(enemy)
+            self.add_widget(enemy)
 
     def create_artifact(self):
-        pass
+        artifact_data = (1800, 40)
+        artifact = PlaceHolder(position=artifact_data, color=(1, 1, 0))
+        self.artifact = artifact
+        self.add_widget(artifact)
+
 
     def create_puzzle(self):
         pass
@@ -134,6 +146,8 @@ class LevelContents(BaseLevelContents):
 
         # update enemy
         for enemy in self.enemies:
+            if isinstance(enemy, PlaceHolder):
+                continue
             enemy.update(dt, self.player, self.platforms, self)
 
         # Physics and collision checks
@@ -142,6 +156,8 @@ class LevelContents(BaseLevelContents):
 
         # Update puzzle state; remove if solved
         for puzzle in self.puzzles[:]:
+            if isinstance(puzzle, PlaceHolder):
+                continue
             puzzle.update()
             if puzzle.solved:
                 self.remove_widget(puzzle)

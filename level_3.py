@@ -1,9 +1,10 @@
 from kivy.uix.widget import Widget
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.graphics import Rectangle, Color
 from kivy.clock import Clock
 
-from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent
+from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap
 
 class Level_3_Class(Screen):
     """
@@ -21,6 +22,14 @@ class Level_3_Class(Screen):
 
     # Overriding Kivy-defined on_enter
     def on_enter(self, *args):
+        # Set background color or image
+        with self.canvas.before:
+            self.bg_rect = Rectangle(source='assets/backgrounds/level_3.jpg',
+                                     size=self.size, pos=self.pos)
+
+        # Bind to update background when screen size changes
+        self.bind(size=self.update_bg, pos=self.update_bg)
+
         # Initialize level
         print("Entering level 3, press Q to exit")
         if not self.initialized:
@@ -41,11 +50,17 @@ class Level_3_Class(Screen):
             self.update_event.cancel()
             self.update_event = None
 
+    def update_bg(self, instance, value):
+        """Update background rectangle when screen size changes"""
+        self.bg_rect.pos = instance.pos
+        self.bg_rect.size = instance.size
 
 class LevelContents(BaseLevelContents):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.player = Player(x=10, y=1000, width=40, height=40)
+        self.player = Player(x=1500, y=640, width=40, height=40)
+        self.paused = False     # Flag to stop game
+        self.active_puzzle_popup = None
         
         # Lists for bullets, particles, enemies
         self.projectiles = []
@@ -53,10 +68,7 @@ class LevelContents(BaseLevelContents):
         self.platforms = []
         self.enemies = []
         self.puzzles = []
-
-        self.player.inventory_add_item("H3nt4i")
-        self.player.inventory_add_item("N1gg4")
-        self.player.inventory_add_item("Chải mèo")
+        self.artifact = None
         self.add_widget(self.player)
 
         self.create_platform()
@@ -126,8 +138,26 @@ class LevelContents(BaseLevelContents):
             (1260, 240, 1, 1),
             (1420, 320, 1, 1),
             (1580, 400, 1, 1),
-            (1260, 480, 5, 1)
+            (1260, 480, 5, 1),
+            (1420, 420, 1, 2)
         ]
+
+        death_trap_data = [
+            (200, 120, 12, 1),
+            (660, 40, 3, 1),
+            (820, 40, 1, 1),
+            (1020, 40, 2, 1),
+            (860, 760, 1, 1),
+            (1470, 640, 1, 1),
+            (1270, 40, 6, 1),
+
+        ]
+
+        for x, y, num_tiles_x, num_tiles_y, in death_trap_data:
+            death_trap = DeathTrap(x, y, num_tiles_x, num_tiles_y,
+                                texture_path='assets/sprites/tech_laser.png')
+            self.platforms.append(death_trap)
+            self.add_widget(death_trap)
 
         for x, y, num_tiles_x, num_tiles_y in platforms_data:
             platform = Platform(x, y, num_tiles_x, num_tiles_y,
@@ -136,15 +166,41 @@ class LevelContents(BaseLevelContents):
             self.add_widget(platform)
 
     def create_enemy(self):
-        pass
+        enemy_data = [
+            (160, 40),
+            (520, 340),
+            (1180, 40),
+            (1060, 120),
+            (980, 280),
+            (1180, 400),
+            (570, 640),
+            (430, 640),
+            (210, 640),
+            (1020, 760),
+            (1580, 640),
+            (1580, 720),
+            (1260, 880),
+            (1615, 40),
+            (1880, 40)
+        ]
+
+        for position in enemy_data:
+            enemy = PlaceHolder(position=position, color=(1, 0, 0))
+            self.enemies.append(enemy)
+            self.add_widget(enemy)
 
     def create_artifact(self):
-        pass
+        artifact_data = (1260, 520)
+        artifact = PlaceHolder(position=artifact_data, color=(1, 1, 0))
+        self.artifact = artifact
+        self.add_widget(artifact)
 
     def create_puzzle(self):
         pass
 
     def update(self, dt):
+        if self.paused:  # if pause → no process
+            return
         # Process keyboard input for movement
         self.player.process_input()
 
@@ -154,6 +210,8 @@ class LevelContents(BaseLevelContents):
 
         # update enemy
         for enemy in self.enemies:
+            if isinstance(enemy, PlaceHolder):
+                continue
             enemy.update(dt, self.player, self.platforms, self)
 
         # Physics and collision checks
@@ -162,6 +220,8 @@ class LevelContents(BaseLevelContents):
 
         # Update puzzle state; remove if solved
         for puzzle in self.puzzles[:]:
+            if isinstance(puzzle, PlaceHolder):
+                continue
             puzzle.update()
             if puzzle.solved:
                 self.remove_widget(puzzle)
