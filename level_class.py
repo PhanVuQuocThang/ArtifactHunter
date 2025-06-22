@@ -5,10 +5,44 @@ from kivy.uix.popup import Popup
 from kivy.uix.label import Label
 from kivy.graphics import Rectangle, Color
 from kivy.core.window import Window
+from kivy.core.image import Image as CoreImage
 from kivy.vector import Vector
 from kivy.lang import Builder
 from kivy.clock import Clock
+from kivy.core.audio import SoundLoader
 
+from kivy.factory import Factory
+from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.image import Image
+from kivy.animation import Animation
+from random import randint, shuffle
+from abc import ABC, abstractmethod
+
+
+class PlaceHolder(Widget):
+    """
+    Acts as placeholder for any object. Has no other functionality. This class shouldn't be inherited.
+    """
+    def __init__(self, position=(0, 0), size=(40, 40), color=(1, 1, 1), **kwargs):
+        super().__init__(**kwargs)
+
+        # Set widget position and size
+        self.pos = position
+        self.size = size
+
+        # Draw the square
+        with self.canvas:
+            Color(*color)  # Use provided color (RGB values 0-1)
+            self.rect = Rectangle(pos=position, size=size)
+
+    def update(self, position, size, color=None):
+        """Update the square's position, size, and optionally color"""
+        self.rect.pos = position
+        self.rect.size = size
+        if color:
+            with self.canvas:
+                Color(*color)
+                self.rect = Rectangle(pos=position, size=size)
 
 class GameObject(Widget):
     """Base class for game objects that appear on the screen."""
@@ -63,18 +97,54 @@ class Artifact(GameObject):
         print(f"Artifact '{self.name}' collected! Unlocking next level...")
 
 
+class OldPlatform(Widget):
+    def __init__(self, x, y, tile_size=40, texture_path=None, **kwargs):
+        super().__init__(**kwargs)
+
+        self.size = (tile_size, tile_size)
+        self.pos = (x, y)
+
+        with self.canvas:
+            if texture_path:
+                texture = CoreImage(texture_path).texture
+                texture.wrap = 'repeat'
+                Color(1, 1, 1, 1)  # Reset tint to white
+                self.rect = Rectangle(texture=texture, pos=self.pos, size=self.size)
+            else:
+                Color(0.6, 0.4, 0.2, 1)  # Default brown color
+                self.rect = Rectangle(pos=self.pos, size=self.size)
+
+        # Keep rect in sync if position changes
+        self.bind(pos=self.update_rect, size=self.update_rect)
+
+    def update_rect(self, *args):
+        self.rect.pos = self.pos
+        self.rect.size = self.size
 
 class Platform(Widget):
-    def __init__(self, x, y, width, height, **kwargs):
+    def __init__(self, x, y, num_tiles_x, num_tiles_y, texture_path, tile_width=40, tile_height=40, **kwargs):
         super().__init__(**kwargs)
+        self.size = (tile_width * num_tiles_x, tile_height * num_tiles_y)
         self.pos = (x, y)
-        self.size = (width, height)
 
-        # Draw the platform as a brown rectangle
+        # Load texture
+        texture = CoreImage(texture_path).texture
+        texture.wrap = 'repeat'  # VERY important!
+        texture.uvsize = (num_tiles_x, num_tiles_y)  # Repeat X times; flip Y if needed
+
         with self.canvas:
-            Color(0.6, 0.4, 0.2)  # Brown color
-            self.rect = Rectangle(pos=self.pos, size=self.size)
+            Color(1, 1, 1, 1)
+            Rectangle(texture=texture, pos=self.pos, size=self.size)
 
+class DeathTrap(Platform):
+    def __init__(self, x, y, num_tiles_x, num_tiles_y, texture_path, tile_width=40, tile_height=10, **kwargs):
+        super().__init__(x=x, y=y,
+                         num_tiles_x=num_tiles_x, num_tiles_y=num_tiles_y,
+                         texture_path=texture_path,
+                         tile_width=tile_width, tile_height=tile_height,
+                         **kwargs)
+
+        self.damage = 20
 
 class Entity(Widget):
     """
@@ -137,19 +207,26 @@ class Entity(Widget):
         self.on_ground = False
     def move_left(self):
         self.velocity.x = -self.move_speed
+        self.last_direction = Vector(-1, 0)
 
     def move_right(self):
         self.velocity.x = self.move_speed
+        self.last_direction = Vector(1, 0)
 
     def stop_horizontal_movement(self):
         self.velocity.x = 0
 
 class Player(Entity):
-    def __init__(self, x=0, y=0, width=100, height=100, **kwargs):
+    def __init__(self, x=0, y=0, width=40, height=40, **kwargs):
         super().__init__(x, y, width, height, **kwargs)
         self.inventory = [] # Need to also handle inventory input
         self.inventory_popup = None # Inventory object
         self.health = 3
+
+        self.last_direction = Vector(1, 0)
+        self.last_shot_time = Clock.get_boottime()  # For cooldown
+        self.shoot_cooldown = 0.3  # seconds
+
         self.invincible = False
         # self.can_double_jump = False
         # self.has_double_jumped = False
@@ -235,10 +312,10 @@ class Player(Entity):
         # self.can_double_jump = self.has_marioowo()
 
         # Temporary solution to exit level. This will change.
-        if 'q' in self.keys_pressed:
-            self.parent.parent.manager.current = 'level_selection'
+        # if 'q' in self.keys_pressed:
+        #     self.parent.parent.manager.current = 'level_selection'
         # Handle jump
-        if 'spacebar' in self.keys_pressed:
+        if 'up' in self.keys_pressed or 'w' in self.keys_pressed:
             if self.on_ground:
                 self.jump()
             # elif self.can_double_jump and not self.has_double_jumped:
@@ -248,6 +325,10 @@ class Player(Entity):
         if 'b' in self.keys_pressed:
             self.toggle_inventory()
             print("Player open inventory")
+        # Handle shooting
+        if 'spacebar' in self.keys_pressed:
+            self.shoot_towards_cursor()
+            print("Position:", self.pos)
         # Handle horizontal movement
         if 'left' in self.keys_pressed or 'a' in self.keys_pressed:
             self.move_left()
@@ -280,7 +361,50 @@ class Player(Entity):
         print("Player died")
         #Implement death logic here, such as respawning or ending the game
 
+########
+    def shoot_towards_cursor(self):
+        # Get current time to enforce shooting cooldown
+        now = Clock.get_boottime()
+        if now - self.last_shot_time < self.shoot_cooldown:
+            return  # Too soon to shoot again
 
+        self.last_shot_time = now   # Update the last shot timestamp
+        
+        # Determine shooting direction based on key pressed
+        if 'right' in self.keys_pressed or 'd' in self.keys_pressed:
+            direction = Vector(1, 0)
+            self.last_direction = direction
+        elif 'left' in self.keys_pressed or 'a' in self.keys_pressed:
+            direction = Vector(-1, 0)
+            self.last_direction = direction
+        else:
+            direction = self.last_direction     # Default to last used direction
+
+        # Create a new projectile and add it to the level
+        proj = Projectile(x=self.center_x, y=self.center_y, direction=direction,
+            speed=500, damage=10, owner="player")
+        self.parent.add_widget(proj)
+        self.parent.projectiles.append(proj)
+
+        # Play shooting sound and trigger animation
+        SoundManager.play("shoot") 
+        self.animate_attack()
+
+    def animate_attack(self):
+        # Simple visual feedback (flash color)
+        self.canvas.remove(self.rect)
+        with self.canvas:
+            Color(1, 1, 0)  # yellow when attacking
+            self.rect = Rectangle(pos=self.pos, size=self.size)
+        Clock.schedule_once(self.restore_color, 0.1)
+    # Restore player's original color (blue) after attack animation
+    def restore_color(self, dt):
+        self.canvas.remove(self.rect)
+        with self.canvas:
+            Color(0, 0, 1)
+            self.rect = Rectangle(pos=self.pos, size=self.size)
+
+####
 Builder.load_file('inventory.kv')
 class PlayerInventory(Popup):
     """NEED DOCUMENTATION"""
@@ -324,6 +448,10 @@ class Enemy(Entity):
         self.direction = 1  # 1 for right, -1 for left
         self.move_speed = 150  # Enemy moves slower than player
 
+        # Cooldown bắn
+        self.shoot_interval = 2.0  # secondsseconds
+        self.last_shot_time = Clock.get_boottime()
+
         # Draw the enemy as a red rectangle
         with self.canvas:
             Color(1, 0, 0)  # Red color
@@ -331,8 +459,11 @@ class Enemy(Entity):
 
         # Bind position changes to update the rectangle
         self.bind(pos=self.update_graphic, size=self.update_graphic)
-
-    def update(self, dt, player, platforms):
+    
+    def alive(self):
+        return self.current_health > 0
+    
+    def update(self, dt, player, platforms, level):
         """
         Update enemy position, handle wall/gap detection, and check collision with player.
         :param dt: Delta time
@@ -359,6 +490,9 @@ class Enemy(Entity):
         # Check collision with player
         if self.collide_widget(player):
             self.hit_player(player)
+
+        # Attempt to shoot if allowed by cooldown
+        self.try_shoot(player, level)
 
         self.update_graphic()
 
@@ -387,11 +521,41 @@ class Enemy(Entity):
         if hasattr(player, "current_health"):
             player.current_health -= self.attack_damage
             # Optionally, you can add knockback or invulnerability frames here
-        
+
+####
+    def try_shoot(self, player, level):
+        # Get the current time since app started
+        now = Clock.get_boottime()
+
+        # Enforce shooting cooldown: exit if not enough time has passed
+        if now - self.last_shot_time < self.shoot_interval:
+            return
+
+        distance = Vector(player.center_x - self.center_x,
+                        player.center_y - self.center_y).length()
+        if distance > 300:  # Only shoot if player is within 300 pixels
+            return
+
+        self.last_shot_time = now # Update the last shot time to current time
+
+        # Determine direction vector from enemy to player and normalize it
+        direction = Vector(player.center_x - self.center_x,
+                        player.center_y - self.center_y).normalize()
+        # Create the projectile moving in the calculated direction
+        bullet = Projectile(x=self.center_x, y=self.center_y,
+            direction=direction, speed=300, damage=10, owner="enemy"
+        )
+        # Add bullet to level scene and tracking list
+        level.add_widget(bullet)
+        level.projectiles.append(bullet)
+
+        SoundManager.play("shoot")
+
     def update_graphic(self, *args):
         self.rect.pos = self.pos
         self.rect.size = self.size
     
+
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
 
@@ -426,6 +590,10 @@ class BaseLevelContents(Widget):
                     player_rect[1] < platform_rect[1] + platform_rect[3] and
                     player_rect[1] + player_rect[3] > platform_rect[1]):
 
+                if isinstance(platform, DeathTrap):
+                    self.player.current_health -= platform.damage
+                    print("Player health:", self.player.current_health)
+
                 # Calculate overlap distances for each direction
                 # Read the comments to prevent misused of these variables. They follow standard naming for overlapping.
                 overlap_left = (player_rect[0] + player_rect[2]) - platform_rect[0]  # platform's left - player's right
@@ -446,12 +614,13 @@ class BaseLevelContents(Widget):
 
                 # Player is head hitting the bottom of platform
                 elif self.player.velocity.y > 0 and min_overlap == overlap_bottom:
-                    self.player.velocity.y = 0
+                    self.player.velocity.y = -50 # Makes the player fall faster
 
                 # Player is touching the sides of platform
-                elif self.player.velocity.x != 0 and (min_overlap == overlap_right or min_overlap == overlap_left):
+                elif self.player.velocity.x > 0 and min_overlap == overlap_left:
                     self.player.velocity.x = 0
-                break # Stop checking other platforms after first collision
+                elif self.player.velocity.x < 0 and min_overlap == overlap_right:
+                    self.player.velocity.x = 0
 
         self.player.on_ground = on_ground_temp
 
@@ -467,3 +636,290 @@ class BaseLevelContents(Widget):
         """Clean up game resources"""
         if hasattr(self.player, 'cleanup'):
             self.player.cleanup()
+
+class Projectile(Entity):
+    def __init__(self, x, y, direction, speed, damage, owner, decay_time=2.0, max_bounce=0, **kwargs):
+        super().__init__(x, y, 10, 4, **kwargs)
+        self.direction = Vector(direction).normalize() # Normalize the direction vector
+        self.speed = speed
+        self.damage = damage
+        self.owner = owner
+        self.velocity = self.direction * self.speed
+        self.decay_time = decay_time
+        self.max_bounce = max_bounce
+        self.bounce_count = 0
+
+        self.spawn_time = Clock.get_boottime() # Time when projectile is created
+
+        with self.canvas:
+            Color(0, 1, 0, 1) if owner == "player" else Color(1, 0, 0, 1)
+            self.rect = Rectangle(pos=self.pos, size=self.size)
+
+        self.bind(pos=self.update_graphics, size=self.update_graphics)
+
+    def update_graphics(self, *args):
+        self.rect.pos = self.pos
+        self.rect.size = self.size
+
+    def update(self, dt, level):
+        if not self.parent:
+            return  # Don't update if removed from screen
+
+        self.pos = (self.pos[0] + self.velocity.x * dt, self.pos[1] + self.velocity.y * dt)
+
+        if Clock.get_boottime() - self.spawn_time > self.decay_time:
+            if self.parent:
+                self.parent.remove_widget(self)
+            if self in level.projectiles:
+                level.projectiles.remove(self)
+            return
+
+        for platform in level.platforms:
+            if self.collide_widget(platform):
+                if self.max_bounce > 0 and self.bounce_count < self.max_bounce:
+                    self.velocity.x *= -1   # Reverse horizontal direction
+                    self.bounce_count += 1
+                else:
+                    if self.parent:
+                        self.parent.remove_widget(self)
+                    if self in level.projectiles:
+                        level.projectiles.remove(self)
+                return
+
+        targets = [level.player] if self.owner != "player" else level.enemies
+        for target in targets:
+            if self.collide_widget(target):
+                if hasattr(target, 'current_health'):
+                    target.current_health -= self.damage     # Apply damage
+                    print(f"{target.name} trúng đạn! HP còn: {target.current_health}")
+                
+                # Xử lý chết
+                if target.current_health <= 0 and target in level.enemies:
+                    level.remove_widget(target)     # Remove dead enemy
+                    level.enemies.remove(target)
+
+                for _ in range(6):
+                    part = Particle(self.center, color=(1, 0.6, 0)) # Create explosion particles
+                    level.add_widget(part)
+                    level.particles.append(part)
+                if self.parent:
+                    self.parent.remove_widget(self)
+                if self in level.projectiles:
+                    level.projectiles.remove(self)
+                return
+
+
+class Particle(Widget):
+    def __init__(self, pos, color=(1, 1, 0), lifetime=0.3, **kwargs):
+        super().__init__(**kwargs)
+        self.size = (6, 6)
+        self.pos = (pos[0] - 3, pos[1] - 3)
+        self.velocity = Vector(1, 0).rotate(randint(0, 360)) * 100
+
+        with self.canvas:
+            Color(*color)
+            self.rect = Rectangle(pos=self.pos, size=self.size)
+
+        self.bind(pos=self.update_graphics, size=self.update_graphics)
+        Clock.schedule_interval(self._update, 1/60)
+        Clock.schedule_once(self._destroy, lifetime)
+
+    def update_graphics(self, *args):
+        self.rect.pos = self.pos
+        self.rect.size = self.size
+
+    def _update(self, dt):
+        self.pos = (self.pos[0] + self.velocity.x * dt, self.pos[1] + self.velocity.y * dt)
+
+    def _destroy(self, dt):
+        if self.parent:
+            self.parent.remove_widget(self)
+
+class PuzzleComponent(Widget):
+    # List of all available quiz questions
+    QUESTIONS = [
+        ("Which ancient civilization developed the earliest writing system?", tuple(["Sumer", "Egypt", "Rome", "Greece"]), 0),
+        ("Which ancient city is famous for being located in the Egyptian desert?", tuple(["Thebes", "Babylon", "Carthage", "Persepolis"]), 0),
+        ("What type of roads did the Romans use to connect their empire?", tuple(["Stone roads", "Dirt roads", "Wooden roads", "Railroads"]), 0),
+        ("Which technology is shaping the cities of the future?", tuple(["Artificial Intelligence", "Steam Engine", "Subway", "Mobile Phone"]), 0),
+        ("Which city is famous for its canal system instead of roads?", tuple(["Venice", "Amsterdam", "Bangkok", "Singapore"]), 0),
+        ("Which was the first city in the world to build a subway system?", tuple(["London", "Paris", "New York", "Berlin"]), 0),
+    ]
+
+    _used_questions = set() # Set to track already-used questions
+
+    @classmethod
+    def get_puzzles_for_level(cls, level_number):
+        """Return a list of PuzzleComponent objects based on level.
+        Level 1 → 1 question, Level 2 → 2 questions, Level 3 → 3 questions.
+        """
+        count_map = {1: 1, 2: 2, 3: 3}
+        count = count_map.get(level_number, 0)
+
+        remaining = [q for q in cls.QUESTIONS if q not in cls._used_questions]
+        shuffle(remaining)
+        selected = remaining[:count]
+        cls._used_questions.update(selected)
+
+        puzzles = []
+        for i, (q, ans, correct) in enumerate(selected):
+            pos = (400, 500 - i * 120)
+            puzzles.append(cls(pos, q, list(ans), correct))
+
+        return puzzles
+    
+    def __init__(self, pos, question, answers, correct_index, level_ref=None, **kwargs):
+        super().__init__(**kwargs)
+        self.size = (100, 100)
+        self.pos = pos
+        self.question = question
+        self.answers = answers
+        self.correct_index = correct_index
+        self.level_ref = level_ref  # Reference to the level (for enemy checking)
+
+        self.max_wrong_attempts = 2
+        self.wrong_attempts = 0
+        self.locked_until_enemy_dead = False
+
+        self.solved = False
+        self.show_prompt = False
+
+        with self.canvas:
+            self.rect = Image(source="assets/sprites/question_block.png", pos=self.pos, size=self.size)
+
+        self.bind(pos=self.update_graphics, size=self.update_graphics)
+        Clock.schedule_interval(self._check_player_interaction, 1 / 30)
+
+    def update_graphics(self, *args):
+        self.rect.pos = self.pos
+        self.rect.size = self.size
+
+    def solve(self):
+        self.solved = True
+        self.show_hint("✅ Correct! You solved the puzzle.")
+        
+    def _check_player_interaction(self, dt):
+        if not self.parent or not hasattr(self.parent, 'player'):
+            return
+        if self.collide_widget(self.parent.player) and not self.solved:
+            self.show_question_popup()
+
+    def show_question_popup(self):
+        if self.show_prompt or self.solved:
+            return
+
+        from kivy.app import App
+        if App.get_running_app().is_paused:
+            return
+        
+        if self.level_ref:
+            self.level_ref.active_puzzle_popup = self
+
+        if self.locked_until_enemy_dead and any(e.alive() for e in self.level_ref.enemies):
+            self.show_hint("🔒 Eliminate all enemies before continuing!")
+            return
+        self.locked_until_enemy_dead = False
+        self.show_prompt = True
+
+        root = FloatLayout(size_hint=(1, 1))
+
+        title_label = Label(text="🧠 Puzzle Time!", font_size='32sp',
+            color=(1, 0.27, 0.27, 1), bold=True, size_hint=(None, None),
+            size=(700, 60), pos_hint={'center_x': 0.5, 'top': 0.98})
+        root.add_widget(title_label)
+
+        main_box = Factory.MainBox()
+        question_lbl = Factory.QuestionLabel(text=self.question)
+        main_box.add_widget(question_lbl)
+
+        for i, ans in enumerate(self.answers):
+            btn = Factory.AnswerButton(text=ans)
+            btn.bind(on_press=self._on_correct_answer if i == self.correct_index else self._on_wrong_answer)
+            main_box.add_widget(btn)
+
+        root.add_widget(main_box)
+
+        self.popup = Popup(
+            title='', content=root, size_hint=(None, None), size=(700, 550),
+            auto_dismiss=False, separator_height=0,
+            background='', background_color=(0, 0, 0, 0), opacity=0 )
+        Animation(opacity=1, duration=0.35, t='out_quad').start(self.popup)
+        self.popup.open()
+
+    def _on_correct_answer(self, instance):
+        if self.popup: 
+            self.popup.dismiss()
+        self.show_prompt = False
+        SoundManager.play("correct")  # 🔊 play correct sound
+        self.solve()
+
+    def _on_wrong_answer(self, instance):
+        if self.popup: 
+            self.popup.dismiss()
+        self.show_prompt = False
+        self.wrong_attempts += 1
+        SoundManager.play("incorrect")  # 🔊 play incorrect sound
+
+        if self.wrong_attempts >= self.max_wrong_attempts:
+            self.locked_until_enemy_dead = True   
+            Clock.schedule_once(lambda dt: self.show_hint("❌ Incorrect twice! Defeat enemies to try again."), 2 )            
+        else:
+            self.show_hint("❌ Wrong! You have {}/{} attempts.".format(
+                self.max_wrong_attempts - self.wrong_attempts, self.max_wrong_attempts))
+
+    def show_hint(self, msg):
+        offset = 60 if "🔒 Eliminate all enemies before continuing!" in msg else 20
+        hint = Label(text=msg, pos=(self.x, self.top + offset), size_hint=(None, None),
+            size=(300, 40), color=(1, 1, 1, 1), bold=True,font_size='18sp')
+        
+        Window.add_widget(hint)
+        Clock.schedule_once(lambda dt: Window.remove_widget(hint), 2)
+        
+    def update(self):
+        pass
+
+class SoundManager:
+    music_volume = 0.7
+    sfx_volume = 0.8
+    sounds = {}
+    music = None
+
+    @classmethod
+    def load(cls):
+        cls.sounds["shoot"] = SoundLoader.load("assets/sounds/shoot.wav")
+        cls.sounds["correct"] = SoundLoader.load("assets/sounds/correct.wav")
+        cls.sounds["incorrect"] = SoundLoader.load("assets/sounds/incorrect.wav")
+        # ... add other sounds if available
+        
+        for sound in cls.sounds.values():
+            if sound:
+                sound.volume = cls.sfx_volume
+
+        '''# Tải nhạc nền nếu có
+        cls.music = SoundLoader.load("assets/music/background_music.mp3")
+        if cls.music:
+            cls.music.loop = True
+            cls.music.volume = cls.music_volume
+            cls.music.play()'''
+
+    @classmethod
+    def play(cls, name):
+        sound = cls.sounds.get(name)
+        if sound:
+            sound.volume = cls.sfx_volume
+            sound.stop()
+            sound.play()
+
+    @classmethod
+    def set_music_volume(cls, volume):
+        cls.music_volume = volume
+        if cls.music:
+            cls.music.volume = volume
+
+    @classmethod
+    def set_sfx_volume(cls, volume):
+        cls.sfx_volume = volume
+        for sound in cls.sounds.values():
+            if sound:
+                sound.volume = volume
+   
