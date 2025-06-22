@@ -58,7 +58,7 @@ class Level_3_Class(Screen):
 class LevelContents(BaseLevelContents):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.player = Player(x=1500, y=640, width=40, height=40)
+        self.player = Player(x=10, y=40, width=40, height=40)
         self.paused = False     # Flag to stop game
         self.active_puzzle_popup = None
         

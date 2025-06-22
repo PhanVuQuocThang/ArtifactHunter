@@ -16,7 +16,6 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image
 from kivy.animation import Animation
 from random import randint, shuffle
-from abc import ABC, abstractmethod
 
 
 class PlaceHolder(Widget):
