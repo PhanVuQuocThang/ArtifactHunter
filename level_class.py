@@ -23,23 +23,34 @@ class PlaceHolder(Widget):
     """
     Acts as placeholder for any object. Has no other functionality. This class shouldn't be inherited.
     """
-    def __init__(self, position=(0, 0), size=(40, 40), color=(1, 1, 1), **kwargs):
+    def __init__(self, position=(0, 0), size=(40, 40), color=(1, 1, 1), texture_path=None, **kwargs):
         super().__init__(**kwargs)
 
         # Set widget position and size
         self.pos = position
         self.size = size
 
-        # Draw the square
         with self.canvas:
-            Color(*color)  # Use provided color (RGB values 0-1)
-            self.rect = Rectangle(pos=position, size=size)
+            if texture_path:
+                texture = CoreImage(texture_path).texture
+                Color(1, 1, 1, 1)
+                self.rect = Rectangle(texture=texture, pos=position, size=size)
+            else:
+                Color(*color)
+                self.rect = Rectangle(pos=position, size=size)
 
-    def update(self, position, size, color=None):
-        """Update the square's position, size, and optionally color"""
+    def update(self, position, size, color=None, texture_path=None):
+        """Update the square's position, size, and optionally color or texture"""
         self.rect.pos = position
         self.rect.size = size
-        if color:
+        if texture_path:
+            texture = CoreImage(texture_path).texture
+            texture.wrap = 'repeat'
+            texture.uvsize = (1, 1)  # Adjust as needed
+            self.rect.texture = texture
+        elif color:
+            # Remove and redraw with new color (texture will be removed)
+            self.canvas.remove(self.rect)
             with self.canvas:
                 Color(*color)
                 self.rect = Rectangle(pos=position, size=size)

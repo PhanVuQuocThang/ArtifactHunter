@@ -120,13 +120,13 @@ class LevelContents(BaseLevelContents):
         ]
 
         for position in enemy_data:
-            enemy = PlaceHolder(position=position, color=(1, 0, 0))
+            enemy = PlaceHolder(position=position, color=(1, 0, 0),texture_path='assets/sprites/Characters/Enemy.png')
             self.enemies.append(enemy)
             self.add_widget(enemy)
 
     def create_artifact(self):
-        artifact_data = (1800, 40)
-        artifact = PlaceHolder(position=artifact_data, color=(1, 1, 0))
+        artifact_data = (700, 40)
+        artifact = PlaceHolder(position=artifact_data, color=(1, 1, 0),texture_path='assets/sprites/Artifacts/DOUBLE_JUMP.png')
         self.artifact = artifact
         self.add_widget(artifact)
 

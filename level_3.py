@@ -185,13 +185,22 @@ class LevelContents(BaseLevelContents):
         ]
 
         for position in enemy_data:
+<<<<<<< Updated upstream
             enemy = PlaceHolder(position=position, color=(1, 0, 0))
+=======
+            enemy = PlaceHolder(position=position, color=(1, 0, 0),texture_path='assets/sprites/Characters/Enemy.png')
+>>>>>>> Stashed changes
             self.enemies.append(enemy)
             self.add_widget(enemy)
 
     def create_artifact(self):
+<<<<<<< Updated upstream
         artifact_data = (1260, 520)
         artifact = PlaceHolder(position=artifact_data, color=(1, 1, 0))
+=======
+        artifact_data = (40, 40)
+        artifact = PlaceHolder(position=artifact_data, color=(1, 1, 0),texture_path='assets/sprites/Artifacts/DMG.png')
+>>>>>>> Stashed changes
         self.artifact = artifact
         self.add_widget(artifact)
 
