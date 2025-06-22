@@ -10,6 +10,7 @@ from kivy.vector import Vector
 from kivy.lang import Builder
 from kivy.clock import Clock
 from kivy.core.audio import SoundLoader
+from kivy.app import App
 
 from kivy.factory import Factory
 from kivy.uix.floatlayout import FloatLayout
@@ -253,6 +254,9 @@ class Player(Entity):
     def cleanup(self):
         """Clean up resources when player is destroyed"""
         self._keyboard_closed()
+        # Cancel any scheduled events
+        Clock.unschedule(self.end_invincibility)
+        Clock.unschedule(self.restore_color)
 
     def toggle_inventory(self, pressed_key: str='b'):
         """Open the inventory popup. If the popup is already opened, close the popup."""
@@ -282,6 +286,8 @@ class Player(Entity):
     #     return False
 
     def process_input(self):
+        if getattr(self.parent, "paused", False):
+            return
         """Process continuous key presses (called every frame)"""
         # # Check for Marioowo in inventory to enable double jump
         # self.can_double_jump = self.has_marioowo()
@@ -335,6 +341,13 @@ class Player(Entity):
     def die(self):
         print("Player died")
         #Implement death logic here, such as respawning or ending the game
+        app = App.get_running_app()
+        app.current_playing_screen = app.root.current 
+        app.is_paused = True
+        self.parent.paused = True
+        SoundManager.play("gameover")
+        popup = Factory.GameOverPopup()
+        popup.open()
 
 ########
     def shoot_towards_cursor(self):
@@ -540,6 +553,8 @@ class Enemy(Entity):
         :param player: Player instance
         :param platforms: List of Platform instances
         """
+        if getattr(level, "paused", False):
+            return 
         # Move horizontally
         self.velocity.x = self.direction * self.move_speed
         self.pos = (
@@ -761,7 +776,8 @@ class Projectile(Entity):
                 if hasattr(target, 'current_health'):
                     target.current_health -= self.damage     # Apply damage
                     print(f"{target.name} trúng đạn! HP còn: {target.current_health}")
-                
+                    if isinstance(target, Player) and target.current_health <= 0:
+                        target.die()
                 # Xử lý chết
                 if target.current_health <= 0 and target in level.enemies:
                     level.remove_widget(target)     # Remove dead enemy
@@ -877,17 +893,18 @@ class PuzzleComponent(Widget):
         if self.show_prompt or self.solved:
             return
 
-        from kivy.app import App
         if App.get_running_app().is_paused:
             return
-        
-        if self.level_ref:
-            self.level_ref.active_puzzle_popup = self
 
         if self.locked_until_enemy_dead and any(e.alive() for e in self.level_ref.enemies):
             self.show_hint("🔒 Eliminate all enemies before continuing!")
             return
         self.locked_until_enemy_dead = False
+
+        if self.level_ref:
+            self.level_ref.active_puzzle_popup = self
+            if hasattr(self.level_ref, "paused"):
+                self.level_ref.paused = True  # Pause game
         self.show_prompt = True
 
         root = FloatLayout(size_hint=(1, 1))
@@ -919,6 +936,8 @@ class PuzzleComponent(Widget):
         if self.popup: 
             self.popup.dismiss()
         self.show_prompt = False
+        if hasattr(self.level_ref, "paused"):
+            self.level_ref.paused = False  # Resume game
         SoundManager.play("correct")  # 🔊 play correct sound
         self.solve()
 
@@ -926,6 +945,8 @@ class PuzzleComponent(Widget):
         if self.popup: 
             self.popup.dismiss()
         self.show_prompt = False
+        if hasattr(self.level_ref, "paused"):
+            self.level_ref.paused = False  # Resume game
         self.wrong_attempts += 1
         SoundManager.play("incorrect")  # 🔊 play incorrect sound
 
@@ -958,6 +979,7 @@ class SoundManager:
         cls.sounds["shoot"] = SoundLoader.load("assets/sounds/shoot.wav")
         cls.sounds["correct"] = SoundLoader.load("assets/sounds/correct.wav")
         cls.sounds["incorrect"] = SoundLoader.load("assets/sounds/incorrect.wav")
+        cls.sounds["gameover"] = SoundLoader.load("assets/sounds/gameover.wav")
         # ... add other sounds if available
         
         for sound in cls.sounds.values():

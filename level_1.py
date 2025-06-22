@@ -42,7 +42,13 @@ class Level_1_Class(Screen):
         if self.update_event:
             self.update_event.cancel()
             self.update_event = None
-
+    def reset_level(self):
+        """Reset the level to its initial state"""
+        if self.level_contents:
+            self.remove_widget(self.level_contents)
+        self.level_contents = None
+        self.initialized = False
+        self.on_enter()  # Re-initialize the level
 
 class LevelContents(BaseLevelContents):
     def __init__(self, **kwargs):

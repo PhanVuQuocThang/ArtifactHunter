@@ -4,6 +4,7 @@ from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.core.text import LabelBase
 from kivy.core.window import Window
 from kivy.factory import Factory
+from kivy.clock import Clock
 
 from level_1 import LevelContents, Level_1_Class
 from level_2 import LevelContents, Level_2_Class
@@ -154,6 +155,42 @@ class PausePopup(Popup):
 
     def quit_game(self):
         App.get_running_app().stop()
+
+class GameOverPopup(Popup):
+    def retry_level(self, instance):
+        app = App.get_running_app()
+        screen_name = app.current_playing_screen
+        screen = app.root.get_screen(screen_name)
+        if hasattr(screen, 'reset_level'):
+            screen.reset_level()
+        # Reset game state
+        app.is_paused = False
+        self.dismiss()
+        
+        # Switch back to the level
+        app.root.current = screen_name
+
+    def quit_to_menu(self, instance):
+        app = App.get_running_app()
+        
+        # Reset game state
+        app.is_paused = False
+        
+        # Get the current level screen and clean up
+        screen_name = app.current_playing_screen
+        screen = app.root.get_screen(screen_name)
+        if hasattr(screen, 'on_leave'):
+            screen.on_leave()  # Clean up level resources
+        # Reset the screen completely
+        screen.clear_widgets()
+        screen.initialized = False
+        screen.level_contents = None
+        # Go back to main menu
+        app.root.current = 'main_menu'
+        self.dismiss()
+
+Factory.register('GameOverPopup', cls=GameOverPopup)
+Factory.register('PausePopup', cls=PausePopup)
 
 class ArtifactHunterApp(App):
     current_playing_screen = None
