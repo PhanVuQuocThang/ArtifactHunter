@@ -180,9 +180,10 @@ class Entity(Widget):
 
     # These functions only change velocity, not position
     def jump(self):
-        # if self.on_ground:
-        self.velocity.y = self.jump_speed
-        self.on_ground = False
+        if self.on_ground:
+            self.velocity.y = self.jump_speed
+            self.on_ground = False
+
     def move_left(self):
         self.velocity.x = -self.move_speed
         self.last_direction = Vector(-1, 0)
@@ -207,8 +208,8 @@ class Player(Entity):
         self.shoot_cooldown = 0.3  # seconds
 
         self.invincible = False
-        # self.can_double_jump = False
-        # self.has_double_jumped = False
+        self.can_double_jump = False
+        self.has_double_jumped = False
         # Input handling
         self.keys_pressed = set()
         self._keyboard = None
@@ -332,6 +333,23 @@ class Player(Entity):
 
     def inventory_remove_item(self, item):
         self.inventory.remove(item)
+    def apply_inventory_effects(self):
+        """Apply item effects from inventory"""
+        self.can_double_jump = False
+        self.damage = 10
+        self.max_health = 100
+        self.current_health = min(getattr(self, "current_health", self.max_health), self.max_health)
+    
+        for item in self.inventory:
+            name = getattr(item, 'name', str(item)).lower()
+            if name == 'sky rocket':
+                self.can_double_jump = True
+            elif name == 'acient shotgun':
+                self.damage = 20
+            elif name == 'meat armor':
+                self.max_health = 200
+                self.current_health = min(self.current_health, self.max_health)
+
 
     # def has_marioowo(self):
     #     """Check if player has 'Marioowo' in inventory."""
@@ -339,6 +357,14 @@ class Player(Entity):
     #         if hasattr(item, 'name') and item.name == 'Marioowo':
     #             return True
     #     return False
+    def jump(self):
+        """Handle jumping logic, including double jump if applicable."""
+        if self.on_ground:
+            super().jump()
+            self.has_double_jumped = False  # Reset on first jump
+        elif self.can_double_jump and not self.has_double_jumped:
+            self.velocity.y = self.jump_speed
+            self.has_double_jumped = True
 
     def process_input(self):
         if getattr(self.parent, "paused", False):
@@ -348,9 +374,10 @@ class Player(Entity):
         if 'up' in self.keys_pressed or 'w' in self.keys_pressed:
             if self.on_ground:
                 self.jump()
-            # elif self.can_double_jump and not self.has_double_jumped:
-            #     self.jump()
-            #     self.has_double_jumped = True
+            elif self.can_double_jump and not self.has_double_jumped:
+                self.on_ground = True
+                self.jump()
+                self.has_double_jumped = True
         # Handle open inventory
         # if 'b' in self.keys_pressed:
         #     self.toggle_inventory()
@@ -476,25 +503,10 @@ class PlayerInventory(Popup):
             container.add_widget(empty_label)
 
     def apply_item_effects(self, inventory):
-        """Apply effects based on items in inventory"""
         player = self.get_player_instance()
-        if not player:
-            return
+        if player:
+            player.apply_inventory_effects()
 
-        # Reset to default values before applying effects
-        player.can_double_jump = False
-        player.damage = 10  # Default damage
-        player.max_health = 100  # Default health
-
-        for item in inventory:
-            name = getattr(item, 'name', str(item))
-            if name.lower() == 'sky rocket':
-                player.can_double_jump = True
-            elif name.lower() == 'acient shotgun':
-                player.damage = 20  # 10 * 2
-            elif name.lower() == 'meat armor':
-                player.max_health = 200  # 100 * 2
-                player.current_health = min(player.current_health, player.max_health)
 
     def get_player_instance(self):
         # Try to find the player instance from the popup's parent chain
@@ -545,11 +557,18 @@ class Artifact(Entity):
         if self.collide_widget(player):
             self.is_collected = True
             if hasattr(player, "inventory_add_item"):
+                print(f"Artifact '{self.name}' collected by player!")
                 player.inventory_add_item(self)
+
+                # Immediately apply effects here
+                if hasattr(player, 'apply_inventory_effects'):
+                    player.apply_inventory_effects()
+
             # Optionally, remove the artifact from the screen
             if self.parent:
                 self.parent.remove_widget(self)
-            print(f"Artifact '{self.name}' collected by player!")
+
+
 
     def unlock_level(self):
         """
