@@ -390,5 +390,59 @@
         id: overlay_layer
         size: root.size
         pos: root.pos
+<GameOverPopup@Popup>:
+    size_hint: None, None
+    size: 560, 380
+    auto_dismiss: False
+    title: '' 
+    separator_height: 0  
+    background: 'assets/backgrounds/level_selection.jpg'
+    background_color: 1, 1, 1, 1
+
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: 16
+        padding: [30, 45]  
+        size_hint: None, None
+        size: root.size
+        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+        Label:
+            text: "GAME OVER"
+            font_size: '30sp'  
+            color: 1, 1, 1, 1
+            size_hint_y: None
+            height: 32
+
+        Label:
+            text: "💀 [b][color=#ff4444]You Died![/color][/b]"
+            markup: True
+            font_size: '40sp'  
+            halign: 'center'
+            valign: 'middle'
+            size_hint_y: None
+            height: self.texture_size[1] + 8
+
+        Widget:
+
+        Button:
+            text: "🔁 Retry"
+            font_size: '18sp'
+            size_hint: 0.6, None
+            height: 48
+            pos_hint: {'center_x': 0.5}
+            background_color: 0.15, 0.15, 0.15, 0.7
+            background_normal: ''
+            on_press: root.retry_level(self)
+
+        Button:
+            text: "🏠 Back to Menu"
+            font_size: '18sp'
+            size_hint: 0.6, None
+            height: 48
+            pos_hint: {'center_x': 0.5}
+            background_color: 0.15, 0.15, 0.15, 0.7
+            background_normal: ''
+            on_press: root.quit_to_menu(self)
 
 
