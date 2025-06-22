@@ -177,14 +177,14 @@ class LevelContents(BaseLevelContents):
             (1410, 120)
         ]
 
-        for position in enemy_data:
-            enemy = PlaceHolder(position=position, color=(1, 0, 0),texture_path='assets/sprites/Characters/Enemy.png')
+        for x,y in enemy_data:
+            enemy = Enemy(x=x, y=y, width=40, height=40, texture_path='assets/sprites/Characters/Enemy.png')
             self.enemies.append(enemy)
             self.add_widget(enemy)
 
     def create_artifact(self):
         artifact_data = (650, 40)
-        artifact = PlaceHolder(position=artifact_data, color=(1, 1, 0),texture_path='assets/sprites/Artifacts/HEALTH.png')
+        artifact = Artifact(name="meat armor",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path='assets/sprites/Artifacts/HEALTH.png')
         self.artifact = artifact
         self.add_widget(artifact)
 

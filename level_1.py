@@ -119,14 +119,14 @@ class LevelContents(BaseLevelContents):
             (1500, 40)
         ]
 
-        for position in enemy_data:
-            enemy = PlaceHolder(position=position, color=(1, 0, 0),texture_path='assets/sprites/Characters/Enemy.png')
+        for x, y in enemy_data:
+            enemy = Enemy(x=x, y=y, width=40, height=40, texture_path='assets/sprites/Characters/Enemy.png')
             self.enemies.append(enemy)
             self.add_widget(enemy)
 
     def create_artifact(self):
         artifact_data = (700, 40)
-        artifact = PlaceHolder(position=artifact_data, color=(1, 1, 0),texture_path='assets/sprites/Artifacts/DOUBLE_JUMP.png')
+        artifact = Artifact(name="sky rocket",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path='assets/sprites/Artifacts/DOUBLE_JUMP.png')
         self.artifact = artifact
         self.add_widget(artifact)
 
