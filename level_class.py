@@ -18,6 +18,32 @@ from kivy.animation import Animation
 from random import randint, shuffle
 from abc import ABC, abstractmethod
 
+
+class PlaceHolder(Widget):
+    """
+    Acts as placeholder for any object. Has no other functionality. This class shouldn't be inherited.
+    """
+    def __init__(self, position=(0, 0), size=(40, 40), color=(1, 1, 1), **kwargs):
+        super().__init__(**kwargs)
+
+        # Set widget position and size
+        self.pos = position
+        self.size = size
+
+        # Draw the square
+        with self.canvas:
+            Color(*color)  # Use provided color (RGB values 0-1)
+            self.rect = Rectangle(pos=position, size=size)
+
+    def update(self, position, size, color=None):
+        """Update the square's position, size, and optionally color"""
+        self.rect.pos = position
+        self.rect.size = size
+        if color:
+            with self.canvas:
+                Color(*color)
+                self.rect = Rectangle(pos=position, size=size)
+
 class GameObject(Widget):
     """Base class for game objects that appear on the screen."""
     def __init__(self, x, y, width, height, **kwargs):
@@ -109,6 +135,16 @@ class Platform(Widget):
         with self.canvas:
             Color(1, 1, 1, 1)
             Rectangle(texture=texture, pos=self.pos, size=self.size)
+
+class DeathTrap(Platform):
+    def __init__(self, x, y, num_tiles_x, num_tiles_y, texture_path, tile_width=40, tile_height=10, **kwargs):
+        super().__init__(x=x, y=y,
+                         num_tiles_x=num_tiles_x, num_tiles_y=num_tiles_y,
+                         texture_path=texture_path,
+                         tile_width=tile_width, tile_height=tile_height,
+                         **kwargs)
+
+        self.damage = 20
 
 class Entity(Widget):
     """
@@ -227,8 +263,6 @@ class Player(Entity):
         """Handle key press events"""
         key = keycode[1]
         self.keys_pressed.add(key)
-        if key == 'spacebar':
-            self.shoot_towards_cursor()
 
     def _on_keyboard_up(self, keyboard, keycode):
         """Handle key release events"""
@@ -291,6 +325,10 @@ class Player(Entity):
         if 'b' in self.keys_pressed:
             self.toggle_inventory()
             print("Player open inventory")
+        # Handle shooting
+        if 'spacebar' in self.keys_pressed:
+            self.shoot_towards_cursor()
+            print("Position:", self.pos)
         # Handle horizontal movement
         if 'left' in self.keys_pressed or 'a' in self.keys_pressed:
             self.move_left()
@@ -551,6 +589,10 @@ class BaseLevelContents(Widget):
                     player_rect[0] + player_rect[2] > platform_rect[0] and
                     player_rect[1] < platform_rect[1] + platform_rect[3] and
                     player_rect[1] + player_rect[3] > platform_rect[1]):
+
+                if isinstance(platform, DeathTrap):
+                    self.player.current_health -= platform.damage
+                    print("Player health:", self.player.current_health)
 
                 # Calculate overlap distances for each direction
                 # Read the comments to prevent misused of these variables. They follow standard naming for overlapping.
