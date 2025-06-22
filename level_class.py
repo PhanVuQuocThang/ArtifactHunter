@@ -1,4 +1,5 @@
 """This file contains all the main classes that'll be used across the project."""
+from typing import List
 
 from kivy.uix.widget import Widget
 from kivy.uix.popup import Popup
@@ -308,7 +309,7 @@ class Player(Entity):
         """Clean up resources when player is destroyed"""
         self._keyboard_closed()
 
-    def toggle_inventory(self, pressed_key: str='b'):
+    def toggle_inventory(self, pressed_key:str='b'):
         """Open the inventory popup. If the popup is already opened, close the popup."""
         self.keys_pressed.remove(pressed_key)
         if self.inventory_popup and self.inventory_popup._window:
@@ -337,12 +338,6 @@ class Player(Entity):
 
     def process_input(self):
         """Process continuous key presses (called every frame)"""
-        # # Check for Marioowo in inventory to enable double jump
-        # self.can_double_jump = self.has_marioowo()
-
-        # Temporary solution to exit level. This will change.
-        # if 'q' in self.keys_pressed:
-        #     self.parent.parent.manager.current = 'level_selection'
         # Handle jump
         if 'up' in self.keys_pressed or 'w' in self.keys_pressed:
             if self.on_ground:
@@ -351,9 +346,9 @@ class Player(Entity):
             #     self.jump()
             #     self.has_double_jumped = True
         # Handle open inventory
-        if 'b' in self.keys_pressed:
-            self.toggle_inventory()
-            print("Player open inventory")
+        # if 'b' in self.keys_pressed:
+        #     self.toggle_inventory()
+        #     print("Player open inventory")
         # Handle shooting
         if 'spacebar' in self.keys_pressed:
             self.shoot_towards_cursor()
@@ -557,16 +552,17 @@ class Enemy(Entity):
     """
     Represents an enemy that can move and attack the player.
     """
-    def __init__(self, x=0, y=0, width=100, height=100, texture_path=None, **kwargs):
+    def __init__(self, x=0, y=0, width=100, height=100, texture_path=None, shoot_cooldown = 2.0, **kwargs):
         super().__init__(x, y, width, height, **kwargs)
-        self.health = 100
-        self.attack_damage = 1
+        self.max_health = 30
+        self.current_health = 30
+        self.attack_damage = 10
         self.is_alive = True
         self.direction = 1  # 1 for right, -1 for left
-        self.move_speed = 150  # Enemy moves slower than player
+        self.move_speed = 0  # Enemy moves slower than player
 
         # Cooldown bắn
-        self.shoot_interval = 2.0  # seconds
+        self.shoot_interval = shoot_cooldown  # seconds
         self.last_shot_time = Clock.get_boottime()
 
         self.texture_path = texture_path
@@ -687,7 +683,7 @@ class BaseLevelContents(Widget):
         # Type hinting for IDEs so it's less of a pain to work with.
         # Doesn't interrupt the code with or without these.
         self.player : Player
-        self.platform : Platform
+        self.platforms : List[Platform]
 
         player_rect = (
             self.player.pos[0],
@@ -716,6 +712,11 @@ class BaseLevelContents(Widget):
                 if isinstance(platform, DeathTrap):
                     self.player.current_health -= platform.damage
                     print("Player health:", self.player.current_health)
+
+                if isinstance(platform, Artifact):
+                    self.player.inventory_add_item(platform.name)
+                    self.remove_widget(platform)
+                    self.platforms.remove(platform)
 
                 # Calculate overlap distances for each direction
                 # Read the comments to prevent misused of these variables. They follow standard naming for overlapping.

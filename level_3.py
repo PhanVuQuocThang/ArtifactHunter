@@ -193,6 +193,7 @@ class LevelContents(BaseLevelContents):
         artifact_data = (40, 40)
         artifact = Artifact(name="Acient Shotgun",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path='assets/sprites/Artifacts/DMG.png')
         self.artifact = artifact
+        self.platforms.append(artifact)
         self.add_widget(artifact)
 
     def create_puzzle(self):
