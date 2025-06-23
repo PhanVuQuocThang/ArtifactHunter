@@ -39,7 +39,8 @@ class Level_1_Class(Screen):
     # Overriding Kivy-defined on_leave
     def on_leave(self, *args):
         print("Leaving level 1 ")
-        self.level_contents.cleanup()
+        if hasattr(self, 'level_contents') and self.level_contents:
+            self.level_contents.cleanup()
         if self.update_event:
             self.update_event.cancel()
             self.update_event = None
