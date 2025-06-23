@@ -122,7 +122,7 @@ class DeathTrap(Platform):
                          tile_width=tile_width, tile_height=tile_height,
                          **kwargs)
 
-        self.damage = 20
+        self.damage = 40
 
 class Entity(Widget):
     """
@@ -591,7 +591,7 @@ class Enemy(Entity):
         self.attack_damage = 10
         self.is_alive = True
         self.direction = 1  # 1 for right, -1 for left
-        self.move_speed = 0  # Enemy moves slower than player
+        self.move_speed = 100  # Enemy moves slower than player
 
         # Cooldown bắn
         self.shoot_interval = shoot_cooldown  # seconds
@@ -711,76 +711,129 @@ class Enemy(Entity):
 
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
+    @staticmethod
+    def check_aabb_collision(rect1, rect2):
+        """
+        Returns True if two AABB rectangles collide.
+        rect = (x, y, width, height)
+        """
+        return (
+            rect1[0] < rect2[0] + rect2[2] and
+            rect1[0] + rect1[2] > rect2[0] and
+            rect1[1] < rect2[1] + rect2[3] and
+            rect1[1] + rect1[3] > rect2[1]
+        )
+    @staticmethod
+    def get_rect(obj):
+        """
+        Returns (x, y, width, height) from an object with .pos and .size
+        """
+        return (obj.pos[0], obj.pos[1], obj.size[0], obj.size[1])
 
     def check_collisions(self):
-        """Check collisions between player and platforms and artifacts."""
-        # Type hinting for IDEs so it's less of a pain to work with.
-        # Doesn't interrupt the code with or without these.
-        self.player : Player
-        self.platforms : List[Platform]
+        """Check collisions between player and platforms or artifacts."""
+        self.player: Player
+        self.platforms: List[Platform]
 
-        player_rect = (
-            self.player.pos[0],
-            self.player.pos[1],
-            self.player.size[0],
-            self.player.size[1]
-        )
-
+        player_rect = self.get_rect(self.player)
         on_ground_temp = False
-        epsilon = 2 # pixels. Allow slight overlap or near-platform alignment. Unused.
 
         for platform in self.platforms:
-            platform_rect = (
-                platform.pos[0],
-                platform.pos[1],
-                platform.size[0],
-                platform.size[1]
-            )
+            platform_rect = self.get_rect(platform)
 
-            # Standard Axis-Aligned Bounding Box (AABB) collision check
-            if (player_rect[0] < platform_rect[0] + platform_rect[2] and
-                    player_rect[0] + player_rect[2] > platform_rect[0] and
-                    player_rect[1] < platform_rect[1] + platform_rect[3] and
-                    player_rect[1] + player_rect[3] > platform_rect[1]):
-
+            if self.check_aabb_collision(player_rect, platform_rect):
+                # Special case: DeathTrap
                 if isinstance(platform, DeathTrap):
                     self.player.current_health -= platform.damage
                     print("Player health:", self.player.current_health)
+                    self.player.die()
 
+                # Special case: Artifact pickup
                 if isinstance(platform, Artifact):
                     self.player.inventory_add_item(platform.name)
                     self.remove_widget(platform)
                     self.platforms.remove(platform)
+                    continue  # Skip further collision resolution
 
-                # Calculate overlap distances for each direction
-                # Read the comments to prevent misused of these variables. They follow standard naming for overlapping.
-                overlap_left = (player_rect[0] + player_rect[2]) - platform_rect[0]  # platform's left - player's right
-                overlap_right = (platform_rect[0] + platform_rect[2]) - player_rect[0]  # platform's right - player's left
-                overlap_top = (platform_rect[1] + platform_rect[3]) - player_rect[1]  # platform’s top - player’s bottom
-                overlap_bottom = (player_rect[1] + player_rect[3]) - platform_rect[1]  # platform's bottom - player's top
+                # Calculate overlap distances
+                overlap_left = (player_rect[0] + player_rect[2]) - platform_rect[0]
+                overlap_right = (platform_rect[0] + platform_rect[2]) - player_rect[0]
+                overlap_top = (platform_rect[1] + platform_rect[3]) - player_rect[1]
+                overlap_bottom = (player_rect[1] + player_rect[3]) - platform_rect[1]
                 min_overlap = min(overlap_left, overlap_right, overlap_bottom, overlap_top)
 
-                # Player is falling down onto platform
+                # Vertical collisions
                 if self.player.velocity.y <= 0 and min_overlap == overlap_top:
-                    # Place player on top of platform
-                    self.player.pos = (
-                        self.player.pos[0],
-                        platform_rect[1] + platform_rect[3]
-                    )
+                    self.player.pos = (self.player.pos[0], platform_rect[1] + platform_rect[3])
                     self.player.velocity.y = 0
                     on_ground_temp = True
-
-                # Player is head hitting the bottom of platform
                 elif self.player.velocity.y > 0 and min_overlap == overlap_bottom:
-                    self.player.velocity.y = -50 # Makes the player fall faster
+                    self.player.velocity.y = -50
 
-                # Player is touching the sides of platform
+                # Horizontal collisions
                 elif self.player.velocity.x > 0 and min_overlap == overlap_left:
                     self.player.velocity.x = 0
                 elif self.player.velocity.x < 0 and min_overlap == overlap_right:
                     self.player.velocity.x = 0
 
         self.player.on_ground = on_ground_temp
+    ''' check collision between enemies and platfroms'''
+    def check_enemy_collisions(self):
+        """Check collisions between enemies and platforms."""
+        self.enemies: List[Enemy]
+        self.platforms: List[Platform]
+
+        for enemy in self.enemies:
+            enemy_rect = self.get_rect(enemy)
+            on_ground_temp = False
+
+            for platform in self.platforms:
+                platform_rect = self.get_rect(platform)
+
+                if self.check_aabb_collision(enemy_rect, platform_rect):
+                    # Calculate overlap distances
+                    overlap_left = (enemy_rect[0] + enemy_rect[2]) - platform_rect[0]
+                    overlap_right = (platform_rect[0] + platform_rect[2]) - enemy_rect[0]
+                    overlap_top = (platform_rect[1] + platform_rect[3]) - enemy_rect[1]
+                    overlap_bottom = (enemy_rect[1] + enemy_rect[3]) - platform_rect[1]
+                                        # Calculate minimum distances
+                    dx = min(overlap_left, overlap_right)
+                    dy = min(overlap_top, overlap_bottom)
+    
+                    if dx < dy:
+                        # Horizontal collision (left or right)
+                        if overlap_left < overlap_right:
+                            # Collide from left
+                            enemy.pos = (platform_rect[0] - enemy_rect[2], enemy.pos[1])
+                        else:
+                            # Collide from right
+                            enemy.pos = (platform_rect[0] + platform_rect[2], enemy.pos[1])
+                        enemy.velocity.x = 0
+                    else:
+                        # Vertical collision (top or bottom — visually may be top/bottom of a rotated wall)
+                        if enemy.velocity.y <= 0 and overlap_top < overlap_bottom:
+                            # Landed on top
+                            enemy.pos = (enemy.pos[0], platform_rect[1] + platform_rect[3])
+                            enemy.velocity.y = 0
+                            on_ground_temp = True
+                        elif enemy.velocity.y > 0 and overlap_bottom < overlap_top:
+                            # Hit underside of platform (or top of a rotated wall)
+                            enemy.pos = (enemy.pos[0], platform_rect[1] - enemy_rect[3] - 1)
+                            enemy.velocity.y = 0
+    
+
+
+                    # min_overlap = min(overlap_left, overlap_right, overlap_bottom, overlap_top)
+
+                
+
+                    # # Horizontal collisions
+                    # if enemy.velocity.x > 0 and min_overlap == overlap_left:
+                    #     enemy.velocity.x = 0
+                    # elif enemy.velocity.x < 0 and min_overlap == overlap_right:
+                    #     enemy.velocity.x = 0
+
+            enemy.on_ground = on_ground_temp
 
 
     def update(self, dt):
@@ -788,6 +841,7 @@ class BaseLevelContents(Widget):
         Follow: process input -> check collisions -> update"""
         self.player.process_input()
         self.check_collisions()
+        self.check_enemy_collisions()
         self.player.update(dt)
 
     def cleanup(self):
