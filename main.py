@@ -5,6 +5,7 @@ from kivy.resources import resource_add_path
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 resource_add_path(APP_DIR)
 
+
 from kivy.app import App
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen, ScreenManager
