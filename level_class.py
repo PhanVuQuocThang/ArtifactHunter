@@ -313,7 +313,6 @@ class Player(Entity):
         self._keyboard_closed()
         # Cancel any scheduled events
         Clock.unschedule(self.end_invincibility)
-        Clock.unschedule(self.restore_color)
 
     def toggle_inventory(self, pressed_key:str='b'):
         """Open the inventory popup. If the popup is already opened, close the popup."""
