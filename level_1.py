@@ -145,7 +145,11 @@ class LevelContents(BaseLevelContents):
         self.add_widget(artifact)
 
     def create_puzzle(self):
-        pass
+        for puzzle in PuzzleComponent.get_puzzles_for_level(1):  
+            puzzle.level_ref = self  # So puzzle can check enemies when failed
+            self.puzzles.append(puzzle)
+            self.add_widget(puzzle)
+
 
     def update(self, dt):
         if self.paused:  # if pause → no process

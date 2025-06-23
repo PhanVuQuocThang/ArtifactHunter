@@ -50,6 +50,14 @@ class Level_2_Class(Screen):
             self.update_event.cancel()
             self.update_event = None
 
+    def reset_level(self):
+        """Reset the level to its initial state"""
+        if self.level_contents:
+            self.remove_widget(self.level_contents)
+        self.level_contents = None
+        self.initialized = False
+        self.on_enter()  # Re-initialize the level
+        
     def update_bg(self, instance, value):
         """Update background rectangle when screen size changes"""
         self.bg_rect.pos = instance.pos
@@ -194,7 +202,11 @@ class LevelContents(BaseLevelContents):
 
 
     def create_puzzle(self):
-        pass
+        for puzzle in PuzzleComponent.get_puzzles_for_level(2):  
+            puzzle.level_ref = self  # So puzzle can check enemies when failed
+            self.puzzles.append(puzzle)
+            self.add_widget(puzzle)
+
 
     def update(self, dt):
         if self.paused:  # if pause → no process
@@ -224,3 +236,4 @@ class LevelContents(BaseLevelContents):
             if puzzle.solved:
                 self.remove_widget(puzzle)
                 self.puzzles.remove(puzzle)
+
