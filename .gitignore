@@ -82,3 +82,8 @@ coverage.xml
 test.py
 test_*.py
 *_local.py
+
+# PyInstaller
+build/
+dist/
+*.spec
