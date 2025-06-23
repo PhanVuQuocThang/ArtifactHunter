@@ -1,3 +1,4 @@
+```bash
 git clone https://github.com/PhanVuQuocThang/ArtifactHunter.git
 cd ArtifactHunter
 On Linux/macOS:
