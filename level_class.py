@@ -122,7 +122,9 @@ class DeathTrap(Platform):
                          tile_width=tile_width, tile_height=tile_height,
                          **kwargs)
 
+
         self.damage = 5
+
 
 class Entity(Widget):
     """
@@ -791,6 +793,7 @@ class BaseLevelContents(Widget):
                     self.player.current_health -= platform.damage
                     self.player.take_damage(platform.damage)
                     print("Player health:", self.player.current_health)
+                    self.player.die()
 
                 if isinstance(platform, Artifact):
                     self.player.inventory_add_item(platform.name)
