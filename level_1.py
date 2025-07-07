@@ -5,7 +5,7 @@ from kivy.graphics import Rectangle, Color
 from utils import resource_path
 from kivy.clock import Clock
 
-from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap
+from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap, SoundManager
 
 
 class Level_1_Class(Screen):
@@ -24,13 +24,37 @@ class Level_1_Class(Screen):
 
     # Overriding Kivy-defined on_enter
     def on_enter(self, *args):
+        # Đảm bảo không có câu đố nào đang hiển thị
+        if hasattr(self, 'level_contents') and self.level_contents:
+            self.level_contents.active_puzzle_popup = None  # Reset popup câu đố
+            # Reset all puzzle states
+            for puzzle in self.level_contents.puzzles:
+                if hasattr(puzzle, 'show_prompt'):
+                    puzzle.show_prompt = False
+                if hasattr(puzzle, 'popup') and puzzle.popup:
+                    puzzle.popup.dismiss()
+                    puzzle.popup = None
+
         # Initialize level
         print("Entering level 1, press Q to exit")
         if not self.initialized:
+            SoundManager.play_music("level_1")
             self.level_contents = LevelContents()
             self.add_widget(self.level_contents)
             self.initialized = True
         else:
+            # Reset puzzle states when re-entering level
+            if hasattr(self.level_contents, 'puzzles'):
+                for puzzle in self.level_contents.puzzles:
+                    if hasattr(puzzle, 'show_prompt'):
+                        puzzle.show_prompt = False
+                    if hasattr(puzzle, 'popup') and puzzle.popup:
+                        puzzle.popup.dismiss()
+                        puzzle.popup = None
+            # Reset active puzzle popup
+            if hasattr(self.level_contents, 'active_puzzle_popup'):
+                self.level_contents.active_puzzle_popup = None
+
              # Restore keyboard input if re-entering
             self.level_contents.player.setup_keyboard()
         # Frame rate: 60FPS
@@ -40,7 +64,13 @@ class Level_1_Class(Screen):
     def on_leave(self, *args):
         print("Leaving level 1 ")
         if hasattr(self, 'level_contents') and self.level_contents:
+            
+            if self.level_contents.active_puzzle_popup and hasattr(self.level_contents.active_puzzle_popup, 'popup'):
+                self.level_contents.active_puzzle_popup.popup.dismiss()  # Đóng popup câu đố
+                self.level_contents.active_puzzle_popup = None  # Reset popup
+
             self.level_contents.cleanup()
+        SoundManager.stop_music()
         if self.update_event:
             self.update_event.cancel()
             self.update_event = None
