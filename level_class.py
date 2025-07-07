@@ -903,6 +903,16 @@ class PuzzleComponent(Widget):
         ("Which technology is shaping the cities of the future?", tuple(["Artificial Intelligence", "Steam Engine", "Subway", "Mobile Phone"]), 0),
         ("Which city is famous for its canal system instead of roads?", tuple(["Venice", "Amsterdam", "Bangkok", "Singapore"]), 0),
         ("Which was the first city in the world to build a subway system?", tuple(["London", "Paris", "New York", "Berlin"]), 0),
+        ("Which ancient empire is known for its large road network?", tuple(["Roman Empire", "Persian Empire", "Mongol Empire", "Ottoman Empire"]), 0),
+        ("Which ancient structure was built to protect the northern border of China?", tuple(["Great Wall of China", "Hadrian's Wall", "Berlin Wall", "Wall of Babylon"]), 0),
+        ("What was the main writing material used in ancient Egypt?", tuple(["Papyrus", "Parchment", "Clay Tablets", "Leather"]), 0),
+        ("Which ancient city was the center of the Mesopotamian civilization?", tuple(["Babylon", "Carthage", "Athens", "Cairo"]), 0),
+        ("Which technological invention helped the spread of knowledge during the Renaissance?", tuple(["Printing Press", "Telegraph", "Steam Engine", "Electricity"]), 0),
+        ("Which city is famous for its pyramid structures?", tuple(["Giza", "Teotihuacan", "Rome", "Athens"]), 0),
+        ("What was the primary mode of transportation for the Romans?", tuple(["Chariots", "Horses", "Walking", "Bicycles"]), 0),
+        ("Which ancient culture is known for creating the first known code of laws?", tuple(["Babylonian", "Roman", "Greek", "Egyptian"]), 0),
+        ("Which country is home to the ancient city of Petra?", tuple(["Jordan", "Egypt", "Syria", "Israel"]), 0),
+        ("Which ancient civilization is credited with inventing the first wheel?", tuple(["Sumerians", "Romans", "Indus Valley", "Egyptians"]), 0)
     ]
 
     _used_questions = set() # Set to track already-used questions
@@ -921,8 +931,13 @@ class PuzzleComponent(Widget):
         cls._used_questions.update(selected)
 
         puzzles = []
+        position_map = {
+        1: [(460, 350)],             
+        2: [(400, 530), (1200, 550)], 
+        3: [(400, 500), (130, 700), (1100, 450)] 
+        }
         for i, (q, ans, correct) in enumerate(selected):
-            pos = (400, 500 - i * 120)
+            pos = position_map[level_number][i]  # Take position suitably
             puzzles.append(cls(pos, q, list(ans), correct))
 
         return puzzles
@@ -942,6 +957,7 @@ class PuzzleComponent(Widget):
 
         self.solved = False
         self.show_prompt = False
+        self.popup = None
 
         with self.canvas:
             self.rect = Image(source=resource_path("assets/sprites/question_block.png"), pos=self.pos, size=self.size)
@@ -960,7 +976,7 @@ class PuzzleComponent(Widget):
     def _check_player_interaction(self, dt):
         if not self.parent or not hasattr(self.parent, 'player'):
             return
-        if self.collide_widget(self.parent.player) and not self.solved:
+        if self.collide_widget(self.parent.player) and not self.solved and not self.show_prompt:
             self.show_question_popup()
 
     def show_question_popup(self):
@@ -1012,15 +1028,21 @@ class PuzzleComponent(Widget):
         self.show_prompt = False
         if hasattr(self.level_ref, "paused"):
             self.level_ref.paused = False  # Resume game
+        if hasattr(self.level_ref, "active_puzzle_popup"):
+            self.level_ref.active_puzzle_popup = None  
         SoundManager.play("correct")  # 🔊 play correct sound
         self.solve()
 
     def _on_wrong_answer(self, instance):
         if self.popup: 
             self.popup.dismiss()
+            self.popup = None
         self.show_prompt = False
         if hasattr(self.level_ref, "paused"):
             self.level_ref.paused = False  # Resume game
+            
+        if hasattr(self.level_ref, "active_puzzle_popup"):
+            self.level_ref.active_puzzle_popup = None
         self.wrong_attempts += 1
         SoundManager.play("incorrect")  # 🔊 play incorrect sound
 
@@ -1040,7 +1062,9 @@ class PuzzleComponent(Widget):
         Clock.schedule_once(lambda dt: Window.remove_widget(hint), 2)
         
     def update(self):
-        pass
+        if not self.solved:  # Chỉ hiển thị câu đố nếu chưa giải quyết
+            if self.collide_widget(self.level_ref.player):
+                self.show_question_popup()
 
 class SoundManager:
     music_volume = 0.7

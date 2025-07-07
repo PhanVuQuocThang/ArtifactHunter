@@ -44,6 +44,20 @@ class MainMenuScreen(Screen):
         app.previous_screen = self.manager.current  
         self.manager.current = 'settings'
 
+    def back_to_menu(self):
+        app = App.get_running_app()
+
+        # Đảm bảo popup câu đố bị ẩn khi quay lại menu
+        if hasattr(app.root, 'get_screen'):
+            # Lấy màn hình hiện tại
+            current_screen = app.root.get_screen(app.current_playing_screen)
+            
+            # Kiểm tra nếu màn hình hiện tại có chứa câu đố
+            if hasattr(current_screen, 'level_contents') and current_screen.level_contents.active_puzzle_popup:
+                current_screen.level_contents.active_puzzle_popup.dismiss()  # Đóng popup câu đố
+                current_screen.level_contents.active_puzzle_popup = None  # Reset popup
+        app.root.current = 'main_menu'
+
     def quit_game(self):
         App.get_running_app().stop()
 
@@ -157,8 +171,19 @@ class PausePopup(Popup):
     def back_to_menu(self):
         app = App.get_running_app()
         app.is_paused = False
-        if hasattr(app.root.get_screen(app.current_playing_screen), 'level_contents'):
-            app.root.get_screen(app.current_playing_screen).level_contents.paused = False
+        # Get current screen and reset puzzle states
+        screen = app.root.get_screen(app.current_playing_screen)
+        if hasattr(screen, 'level_contents') and screen.level_contents:
+            screen.level_contents.paused = False
+            # Reset all puzzle states
+            for puzzle in screen.level_contents.puzzles:
+                if hasattr(puzzle, 'show_prompt'):
+                    puzzle.show_prompt = False
+                if hasattr(puzzle, 'popup') and puzzle.popup:
+                    puzzle.popup.dismiss()
+                    puzzle.popup = None
+            # Reset active puzzle popup
+            screen.level_contents.active_puzzle_popup = None        
         self.dismiss()
         app.root.current = 'main_menu'
 
@@ -190,6 +215,18 @@ class GameOverPopup(Popup):
         screen = app.root.get_screen(screen_name)
         if hasattr(screen, 'on_leave'):
             screen.on_leave()  # Clean up level resources
+        
+        # Reset the puzzle used questions when going back to menu
+        if hasattr(screen, 'level_contents') and screen.level_contents:
+            # Reset puzzle states
+            for puzzle in screen.level_contents.puzzles:
+                if hasattr(puzzle, 'show_prompt'):
+                    puzzle.show_prompt = False
+                if hasattr(puzzle, 'popup') and puzzle.popup:
+                    puzzle.popup.dismiss()
+                    puzzle.popup = None
+            screen.level_contents.active_puzzle_popup = None
+            
         # Reset the screen completely
         screen.clear_widgets()
         screen.initialized = False
