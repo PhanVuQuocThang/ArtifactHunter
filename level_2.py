@@ -5,7 +5,7 @@ from kivy.graphics import Rectangle, Color
 from kivy.clock import Clock
 from utils import resource_path
 
-from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap
+from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap, SoundManager
 
 class Level_2_Class(Screen):
     """
@@ -31,6 +31,9 @@ class Level_2_Class(Screen):
         # Bind to update background when screen size changes
         self.bind(size=self.update_bg, pos=self.update_bg)
 
+        if not SoundManager.music:  # Check if there's no music playing
+            SoundManager.play_music("level_2")  # Play music for level 2
+
         # Đảm bảo không có câu đố nào đang hiển thị
         if hasattr(self, 'level_contents') and self.level_contents:
             self.level_contents.active_puzzle_popup = None  # Reset popup câu đố
@@ -44,7 +47,7 @@ class Level_2_Class(Screen):
 
         # Initialize level
         print("Entering level 2, press Q to exit")
-        if not self.initialized:
+        if not self.initialized: 
             self.level_contents = LevelContents()
             self.add_widget(self.level_contents)
             self.initialized = True
@@ -70,10 +73,11 @@ class Level_2_Class(Screen):
         print("Leaving level 2 ")
         if hasattr(self, 'level_contents') and self.level_contents:
             if self.level_contents.active_puzzle_popup and hasattr(self.level_contents.active_puzzle_popup, 'popup'):
-                self.level_contents.active_puzzle_popup.popup.dismiss()  #  Close popup
+                self.level_contents.active_puzzle_popup.popup.dismiss()  # Đóng popup câu đố
                 self.level_contents.active_puzzle_popup = None  # Reset popup
 
             self.level_contents.cleanup()
+        SoundManager.stop_music()
         if self.update_event:
             self.update_event.cancel()
             self.update_event = None

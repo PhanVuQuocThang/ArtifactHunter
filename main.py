@@ -56,6 +56,7 @@ class MainMenuScreen(Screen):
             if hasattr(current_screen, 'level_contents') and current_screen.level_contents.active_puzzle_popup:
                 current_screen.level_contents.active_puzzle_popup.dismiss()  # Đóng popup câu đố
                 current_screen.level_contents.active_puzzle_popup = None  # Reset popup
+        SoundManager.stop_music()
         app.root.current = 'main_menu'
 
     def quit_game(self):
@@ -74,10 +75,13 @@ class LevelSelectionScreen(Screen):
         match level_id:
             case 1:
                 self.manager.current = 'level_1'
+                SoundManager.play_music("level_1")
             case 2:
-                self.manager.current = 'level_2'
+                self.manager.current = 'level_2' 
+                SoundManager.play_music("level_2") 
             case 3:
                 self.manager.current = 'level_3'
+                SoundManager.play_music("level_3")
             case _:
                 print("Invalid")
 
@@ -100,7 +104,7 @@ class GuideScreen(Screen):
                 app.root.get_screen(previous).level_contents.paused = True
             popup = Factory.PausePopup()
             popup.open()
-
+            
 class SettingScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -131,6 +135,7 @@ class SettingScreen(Screen):
                 app.root.get_screen(previous).level_contents.paused = True
             popup = Factory.PausePopup()
             popup.open()
+            
 
 class PausePopup(Popup):
     def __init__(self, **kwargs):
@@ -142,6 +147,7 @@ class PausePopup(Popup):
         # Resume logic: reset pause flag trong LevelContents
         if hasattr(app.root.get_screen(app.current_playing_screen), 'level_contents'):
             app.root.get_screen(app.current_playing_screen).level_contents.paused = False
+        SoundManager.play_music(app.current_playing_screen)
         self.dismiss()
 
     def go_to_guide(self):
@@ -155,6 +161,7 @@ class PausePopup(Popup):
         app.previous_screen = app.current_playing_screen
         self.dismiss()
         app.root.current = 'guide'
+        SoundManager.stop_music()
 
     def open_settings(self):
         app = App.get_running_app()
@@ -167,6 +174,7 @@ class PausePopup(Popup):
         app.previous_screen = app.current_playing_screen
         self.dismiss()
         app.root.current = 'settings'
+        SoundManager.stop_music()
 
     def back_to_menu(self):
         app = App.get_running_app()
@@ -183,7 +191,8 @@ class PausePopup(Popup):
                     puzzle.popup.dismiss()
                     puzzle.popup = None
             # Reset active puzzle popup
-            screen.level_contents.active_puzzle_popup = None        
+            screen.level_contents.active_puzzle_popup = None     
+        SoundManager.stop_music()   
         self.dismiss()
         app.root.current = 'main_menu'
 
@@ -260,6 +269,7 @@ class ArtifactHunterApp(App):
         if key == 27:  # ESC
             current = self.root.current
             if self.is_paused:
+                SoundManager.play_music(current)
                 for w in Window.children:
                     if isinstance(w, Factory.PausePopup):
                         w.dismiss()
@@ -269,6 +279,7 @@ class ArtifactHunterApp(App):
                             self.root.get_screen(current).level_contents.paused = False
                         break
             else:
+                SoundManager.stop_music()
                 if current.startswith("level"):
                     self.current_playing_screen = current
                     self.is_paused = True

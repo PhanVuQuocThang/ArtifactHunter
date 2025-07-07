@@ -5,7 +5,7 @@ from kivy.graphics import Rectangle, Color
 from utils import resource_path
 from kivy.clock import Clock
 
-from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap
+from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap, SoundManager
 
 
 class Level_1_Class(Screen):
@@ -38,6 +38,7 @@ class Level_1_Class(Screen):
         # Initialize level
         print("Entering level 1, press Q to exit")
         if not self.initialized:
+            SoundManager.play_music("level_1")
             self.level_contents = LevelContents()
             self.add_widget(self.level_contents)
             self.initialized = True
@@ -65,10 +66,11 @@ class Level_1_Class(Screen):
         if hasattr(self, 'level_contents') and self.level_contents:
             
             if self.level_contents.active_puzzle_popup and hasattr(self.level_contents.active_puzzle_popup, 'popup'):
-                self.level_contents.active_puzzle_popup.popup.dismiss()  # Close popup 
+                self.level_contents.active_puzzle_popup.popup.dismiss()  # Đóng popup câu đố
                 self.level_contents.active_puzzle_popup = None  # Reset popup
 
             self.level_contents.cleanup()
+        SoundManager.stop_music()
         if self.update_event:
             self.update_event.cancel()
             self.update_event = None
