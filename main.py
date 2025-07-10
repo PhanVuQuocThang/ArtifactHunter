@@ -71,11 +71,11 @@ class MainMenuScreen(Screen):
 
 class LevelSelectionScreen(Screen):
     custom_level_status = StringProperty("No custom.txt found")  # Use Kivy property
+    categories = {'platform', 'death_trap', 'enemy', 'artifact'}
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.custom_level_data = None
         self.check_custom_level()
-        self.categories = {'platform', 'death_trap', 'enemy', 'artifact', 'puzzle'}
 
     def back(self):
         print("Back to main menu")
@@ -95,6 +95,7 @@ class LevelSelectionScreen(Screen):
                 SoundManager.play_music("level_3")
             case 4:
                 # Handle custom level
+                print(self.custom_level_data)
                 if self.custom_level_data is not None:
                     # Custom level exists, proceed to load it
                     print("Loading custom level...")
@@ -115,9 +116,12 @@ class LevelSelectionScreen(Screen):
             app = App.get_running_app()
             if os.path.exists("custom.txt"):
                 with open("custom.txt", "r", encoding="utf-8") as file:
-                    parsed_data = self.parse_level_data(file.read())
-                    print(parsed_data)
-                self.custom_level_status = "Level loaded"
+                    self.custom_level_data = self.parse_level_data(file.read())
+                    if self.try_load(self.custom_level_data):
+                        app.custom_level_data = self.custom_level_data
+                        self.custom_level_status = "Level loaded"
+                    else:
+                        self.custom_level_status = "Incorrect data format"
                 print("Custom level loaded successfully")
             else:
                 self.custom_level_data = None
@@ -129,6 +133,7 @@ class LevelSelectionScreen(Screen):
             print(f"Error loading custom level: {e}")
 
     def parse_level_data(self, content: str):
+        """Parse the raw data from file into categories for easier processing"""
         result = {}
         current_categ = None
         lines = content.strip().split()
@@ -149,21 +154,29 @@ class LevelSelectionScreen(Screen):
         return result
 
     def try_load(self, data: dict):
+        """Try to load the parsed data to see if it was formatted correctly"""
         try:
-            death_trap_data = data['death_trap']
-            for x, y, num_tiles_x, num_tiles_y, in death_trap_data:
-                death_trap = DeathTrap(x, y, num_tiles_x, num_tiles_y,
-                                       texture_path=resource_path('assets/sprites/tech_laser.png'))
-            platforms_data = data['platform']
-            for x, y, num_tiles_x, num_tiles_y in platforms_data:
-                platform = Platform(x, y, num_tiles_x, num_tiles_y,
-                                    texture_path=resource_path(
-                                        'assets/sprites/PixelTexturePack/Textures/Tech/BIGSQUARES.png'))
-            enemy_data = data['enemy']
-            for x, y in enemy_data:
-                enemy = Enemy(x=x, y=y, width=40, height=40,
-                              texture_path=resource_path('assets/sprites/Characters/Enemy.png'))
-            # Cant yet try to load puzzles and artifact
+            if data.get('death_trap'):
+                death_trap_data = data['death_trap']
+                for x, y, num_tiles_x, num_tiles_y, in death_trap_data:
+                    death_trap = DeathTrap(x, y, num_tiles_x, num_tiles_y,
+                                           texture_path=resource_path('assets/sprites/tech_laser.png'))
+            if data.get('platform'):
+                platforms_data = data['platform']
+                for x, y, num_tiles_x, num_tiles_y in platforms_data:
+                    platform = Platform(x, y, num_tiles_x, num_tiles_y,
+                                        texture_path=resource_path(
+                                            'assets/sprites/PixelTexturePack/Textures/Tech/BIGSQUARES.png'))
+            if data.get('enemy'):
+                enemy_data = data['enemy']
+                for x, y in enemy_data:
+                    enemy = Enemy(x=x, y=y, width=40, height=40,
+                                  texture_path=resource_path('assets/sprites/Characters/Enemy.png'))
+            if data.get('artifact'):
+                artifact_data = data['artifact']
+                for x, y in artifact_data:
+                    artifact = Artifact(name="Custom", x=x, y=y)
+
         except Exception as e:
             return False
         return True
