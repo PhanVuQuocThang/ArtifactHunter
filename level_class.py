@@ -122,7 +122,9 @@ class DeathTrap(Platform):
                          tile_width=tile_width, tile_height=tile_height,
                          **kwargs)
 
-        self.damage = 30
+
+        self.damage = 5
+
 
 class Entity(Widget):
     """
@@ -201,6 +203,10 @@ class Player(Entity):
         super().__init__(x, y, width, height, **kwargs)
         self.inventory = [] # Need to also handle inventory input
         self.inventory_popup = None # Inventory object
+        self.health = 100
+        self.max_health = 100  
+
+        self.health_bar = None  
         self.airborne_with_no_movement_input = False # This is for animation, look at the update method
 
         self.last_direction = Vector(1, 0)
@@ -243,6 +249,11 @@ class Player(Entity):
             self.rect = Rectangle(pos=self.pos, size=self.size,
                                   texture=self.sprites['idle'][0])
 
+        with self.canvas:
+            Color(0, 1, 0) 
+            self.health_bar = Rectangle(pos=(self.pos[0], self.pos[1] + self.height + 5), size=(self.width, 5))
+        self.health_bar_bg = Rectangle(pos=(self.pos[0], self.pos[1] + self.height + 5), size=(self.width, 5))    
+        self.bind(pos=self.update_health_bar, size=self.update_health_bar)
         # Bind position changes to update the rectangle
         self.bind(pos=self.update_graphics, size=self.update_graphics)
 
@@ -267,8 +278,23 @@ class Player(Entity):
             # Set initial texture
             self.rect.texture = self.sprites[animation_name][0]
 
+    def update_health_bar(self, *args):
+        """Update the health bar when health changes"""
+        self.health_bar.pos = (self.pos[0], self.pos[1] + self.height + 5)
+        health_percentage = self.health / self.max_health
+        self.health_bar.size = (self.width * health_percentage, 5)
+
+    def take_damage(self, damage):
+        """Reduce the enemy's health when attacked"""
+        self.health -= damage
+        self.health = max(self.health, 0)  # Đảm bảo sức khỏe không dưới 0
+        self.update_health_bar()  # Cập nhật thanh máu
+        if self.health <= 0:
+            self.die()
+
     def update(self, dt):
         super().update(dt)
+        self.update_health_bar()
         # Determine animation based on movement state
         if self.last_direction.x < 0:
             self.set_animation('move_left')
@@ -276,6 +302,7 @@ class Player(Entity):
             self.set_animation('move_right')
         else:
             self.set_animation('idle')
+        
 
     def setup_keyboard(self):
         """Initialize keyboard input handling"""
@@ -393,18 +420,19 @@ class Player(Entity):
         else:
             self.stop_horizontal_movement()
 
-    # def on_enemy_collision(self, enemy):
-    #     if self.invincible:
-    #         return
-    #
-    #     print(f"Collided with enemy: {enemy}")
-    #     self.health -= 1
-    #     print(f"Player health: {self.health}")
-    #
-    #     if self.health <= 0:
-    #         self.die()
-    #     else:
-    #         self.become_invincible()
+    def on_enemy_collision(self, enemy):
+        if self.invincible:
+            return
+
+        print(f"Collided with enemy: {enemy}")
+        self.health -= 1
+        self.take_damage(enemy.attack_damage)
+        print(f"Player health: {self.health}")
+
+        if self.health <= 0:
+            self.die()
+        else:
+            self.become_invincible()
 
     def become_invincible(self):
         self.invincible = True
@@ -515,7 +543,6 @@ class PlayerInventory(Popup):
                 return parent.player
             parent = getattr(parent, 'parent', None)
         return None
-
 class Artifact(Entity):
     """
     Represents a collectible artifact that grants the player special abilities
@@ -568,6 +595,8 @@ class Artifact(Entity):
             if self.parent:
                 self.parent.remove_widget(self)
 
+
+
     def unlock_level(self):
         """
         Logic to unlock the next level.
@@ -584,12 +613,13 @@ class Enemy(Entity):
     """
     def __init__(self, x=0, y=0, width=100, height=100, texture_path=None, shoot_cooldown = 2.0, **kwargs):
         super().__init__(x, y, width, height, **kwargs)
-        self.max_health = 30
-        self.current_health = 30
+        self.max_health = 60
+        self.current_health = 60
         self.attack_damage = 10
         self.is_alive = True
         self.direction = 1  # 1 for right, -1 for left
-        self.move_speed = 100  # Enemy moves slower than player
+        self.move_speed = 0  # Enemy moves slower than player
+        self.health_bar = None 
 
         # Cooldown bắn
         self.shoot_interval = shoot_cooldown  # seconds
@@ -606,13 +636,30 @@ class Enemy(Entity):
             else:
                 Color(1, 0, 0)  # Red color
                 self.rect = Rectangle(pos=self.pos, size=self.size)
-
+        with self.canvas:
+            Color(1, 0, 0)
+            self.health_bar = Rectangle(pos=(self.pos[0], self.pos[1] + self.height + 5), size=(self.width, 5))
+        self.health_bar_bg = Rectangle(pos=(self.pos[0], self.pos[1] + self.height + 5), size=(self.width, 5))
         # Bind position changes to update the rectangle
+        self.bind(pos=self.update_health_bar, size=self.update_health_bar)
         self.bind(pos=self.update_graphic, size=self.update_graphic)
     
     def alive(self):
         return self.current_health > 0
     
+    def update_health_bar(self, *args):
+        """Update the health bar when health changes"""
+        self.health_bar.pos = (self.pos[0], self.pos[1] + self.height + 5)
+        health_percentage = self.current_health / self.max_health
+        self.health_bar.size = (self.width * health_percentage, 5)  # Cập nhật chiều rộng của thanh máu
+
+    def take_damage(self, damage):
+        """Reduce the enemy's health when attacked"""
+        self.current_health -= damage
+        self.current_health = max(self.current_health, 0)  # Đảm bảo sức khỏe không dưới 0
+        self.update_health_bar()    # Cập nhật thanh máu
+      
+
     def update(self, dt, player, platforms, level):
         """
         Update enemy position, handle wall/gap detection, and check collision with player.
@@ -647,6 +694,7 @@ class Enemy(Entity):
         self.try_shoot(player, level)
 
         self.update_graphic()
+        self.update_health_bar()
 
     def _is_platform_ahead(self, platforms):
         """
@@ -710,71 +758,6 @@ class Enemy(Entity):
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
 
-    def check_collisions_enemy(self):
-        """Check collisions between player and platforms and artifacts."""
-        # Type hinting for IDEs so it's less of a pain to work with.
-        # Doesn't interrupt the code with or without these.
-        self.platforms : List[Platform]
-        self.enemies: List[Enemy]
-
-        player_rect = (
-            self.player.pos[0],
-            self.player.pos[1],
-            self.player.size[0],
-            self.player.size[1]
-        )
-
-        epsilon = 2 # pixels. Allow slight overlap or near-platform alignment. Unused.
-        for enemy in self.enemies:
-            player_rect = (
-                enemy.pos[0],
-                enemy.pos[1],
-                enemy.size[0],
-                enemy.size[1]
-            )
-
-            for platform in self.platforms:
-                platform_rect = (
-                    platform.pos[0],
-                    platform.pos[1],
-                    platform.size[0],
-                    platform.size[1]
-                )
-
-                # Standard Axis-Aligned Bounding Box (AABB) collision check
-                if (player_rect[0] < platform_rect[0] + platform_rect[2] and
-                        player_rect[0] + player_rect[2] > platform_rect[0] and
-                        player_rect[1] < platform_rect[1] + platform_rect[3] and
-                        player_rect[1] + player_rect[3] > platform_rect[1]):
-
-                    # Calculate overlap distances for each direction
-                    # Read the comments to prevent misused of these variables. They follow standard naming for overlapping.
-                    overlap_left = (player_rect[0] + player_rect[2]) - platform_rect[0]  # platform's left - player's right
-                    overlap_right = (platform_rect[0] + platform_rect[2]) - player_rect[0]  # platform's right - player's left
-                    overlap_top = (platform_rect[1] + platform_rect[3]) - player_rect[1]  # platform’s top - player’s bottom
-                    overlap_bottom = (player_rect[1] + player_rect[3]) - platform_rect[1]  # platform's bottom - player's top
-                    min_overlap = min(overlap_left, overlap_right, overlap_bottom, overlap_top)
-
-                    # Player is falling down onto platform
-                    if enemy.velocity.y <= 0 and min_overlap == overlap_top:
-                        # Place player on top of platform
-                        enemy.pos = (
-                            enemy.pos[0],
-                            platform_rect[1] + platform_rect[3]
-                        )
-                        enemy.velocity.y = 0
-
-                    # Player is head hitting the bottom of platform
-                    elif enemy.velocity.y > 0 and min_overlap == overlap_bottom:
-                        enemy.velocity.y = -50 # Makes the player fall faster
-
-                    # Player is touching the sides of platform
-                    elif enemy.velocity.x > 0 and min_overlap == overlap_left:
-                        enemy.velocity.x = -enemy.velocity.x
-                    elif enemy.velocity.x < 0 and min_overlap == overlap_right:
-                        enemy.velocity.x = -enemy.velocity.x
-
-
     def check_collisions(self):
         """Check collisions between player and platforms and artifacts."""
         # Type hinting for IDEs so it's less of a pain to work with.
@@ -808,9 +791,9 @@ class BaseLevelContents(Widget):
 
                 if isinstance(platform, DeathTrap):
                     self.player.current_health -= platform.damage
+                    self.player.take_damage(platform.damage)
                     print("Player health:", self.player.current_health)
-                    if self.player.current_health <= 0:
-                        self.player.die()
+                    self.player.die()
 
                 if isinstance(platform, Artifact):
                     self.player.inventory_add_item(platform.name)
@@ -853,9 +836,7 @@ class BaseLevelContents(Widget):
         Follow: process input -> check collisions -> update"""
         self.player.process_input()
         self.check_collisions()
-        self.check_collisions_enemy()
         self.player.update(dt)
-        self.player.current_health = 1000
 
     def cleanup(self):
         """Clean up game resources"""
@@ -916,6 +897,7 @@ class Projectile(Entity):
             if self.collide_widget(target):
                 if hasattr(target, 'current_health'):
                     target.current_health -= self.damage     # Apply damage
+                    target.take_damage(self.damage)
                     print(f"{target.name} trúng đạn! HP còn: {target.current_health}")
                     if isinstance(target, Player) and target.current_health <= 0:
                         target.die()
@@ -970,6 +952,16 @@ class PuzzleComponent(Widget):
         ("Which technology is shaping the cities of the future?", tuple(["Artificial Intelligence", "Steam Engine", "Subway", "Mobile Phone"]), 0),
         ("Which city is famous for its canal system instead of roads?", tuple(["Venice", "Amsterdam", "Bangkok", "Singapore"]), 0),
         ("Which was the first city in the world to build a subway system?", tuple(["London", "Paris", "New York", "Berlin"]), 0),
+        ("Which ancient empire is known for its large road network?", tuple(["Roman Empire", "Persian Empire", "Mongol Empire", "Ottoman Empire"]), 0),
+        ("Which ancient structure was built to protect the northern border of China?", tuple(["Great Wall of China", "Hadrian's Wall", "Berlin Wall", "Wall of Babylon"]), 0),
+        ("What was the main writing material used in ancient Egypt?", tuple(["Papyrus", "Parchment", "Clay Tablets", "Leather"]), 0),
+        ("Which ancient city was the center of the Mesopotamian civilization?", tuple(["Babylon", "Carthage", "Athens", "Cairo"]), 0),
+        ("Which technological invention helped the spread of knowledge during the Renaissance?", tuple(["Printing Press", "Telegraph", "Steam Engine", "Electricity"]), 0),
+        ("Which city is famous for its pyramid structures?", tuple(["Giza", "Teotihuacan", "Rome", "Athens"]), 0),
+        ("What was the primary mode of transportation for the Romans?", tuple(["Chariots", "Horses", "Walking", "Bicycles"]), 0),
+        ("Which ancient culture is known for creating the first known code of laws?", tuple(["Babylonian", "Roman", "Greek", "Egyptian"]), 0),
+        ("Which country is home to the ancient city of Petra?", tuple(["Jordan", "Egypt", "Syria", "Israel"]), 0),
+        ("Which ancient civilization is credited with inventing the first wheel?", tuple(["Sumerians", "Romans", "Indus Valley", "Egyptians"]), 0)
     ]
 
     _used_questions = set() # Set to track already-used questions
@@ -988,8 +980,13 @@ class PuzzleComponent(Widget):
         cls._used_questions.update(selected)
 
         puzzles = []
+        position_map = {
+        1: [(460, 350)],             
+        2: [(400, 530), (1200, 550)], 
+        3: [(400, 500), (130, 700), (1100, 450)] 
+        }
         for i, (q, ans, correct) in enumerate(selected):
-            pos = (400, 500 - i * 120)
+            pos = position_map[level_number][i]  # Take position suitably
             puzzles.append(cls(pos, q, list(ans), correct))
 
         return puzzles
@@ -1009,6 +1006,7 @@ class PuzzleComponent(Widget):
 
         self.solved = False
         self.show_prompt = False
+        self.popup = None
 
         with self.canvas:
             self.rect = Image(source=resource_path("assets/sprites/question_block.png"), pos=self.pos, size=self.size)
@@ -1027,7 +1025,7 @@ class PuzzleComponent(Widget):
     def _check_player_interaction(self, dt):
         if not self.parent or not hasattr(self.parent, 'player'):
             return
-        if self.collide_widget(self.parent.player) and not self.solved:
+        if self.collide_widget(self.parent.player) and not self.solved and not self.show_prompt:
             self.show_question_popup()
 
     def show_question_popup(self):
@@ -1038,7 +1036,7 @@ class PuzzleComponent(Widget):
             return
 
         if self.locked_until_enemy_dead and any(e.alive() for e in self.level_ref.enemies):
-            self.show_hint("")
+            self.show_hint("🔒 Eliminate all enemies before continuing!")
             return
         self.locked_until_enemy_dead = False
 
@@ -1079,20 +1077,26 @@ class PuzzleComponent(Widget):
         self.show_prompt = False
         if hasattr(self.level_ref, "paused"):
             self.level_ref.paused = False  # Resume game
+        if hasattr(self.level_ref, "active_puzzle_popup"):
+            self.level_ref.active_puzzle_popup = None  
         SoundManager.play("correct")  # 🔊 play correct sound
         self.solve()
 
     def _on_wrong_answer(self, instance):
         if self.popup: 
             self.popup.dismiss()
+            self.popup = None
         self.show_prompt = False
         if hasattr(self.level_ref, "paused"):
             self.level_ref.paused = False  # Resume game
+            
+        if hasattr(self.level_ref, "active_puzzle_popup"):
+            self.level_ref.active_puzzle_popup = None
         self.wrong_attempts += 1
         SoundManager.play("incorrect")  # 🔊 play incorrect sound
 
         if self.wrong_attempts >= self.max_wrong_attempts:
-            self.locked_until_enemy_dead = False
+            self.locked_until_enemy_dead = True   
             Clock.schedule_once(lambda dt: self.show_hint("❌ Incorrect twice! Defeat enemies to try again."), 2 )            
         else:
             self.show_hint("❌ Wrong! You have {}/{} attempts.".format(
@@ -1107,14 +1111,16 @@ class PuzzleComponent(Widget):
         Clock.schedule_once(lambda dt: Window.remove_widget(hint), 2)
         
     def update(self):
-        pass
+        if not self.solved:  # Chỉ hiển thị câu đố nếu chưa giải quyết
+            if self.collide_widget(self.level_ref.player):
+                self.show_question_popup()
 
 class SoundManager:
     music_volume = 0.7
     sfx_volume = 0.8
     sounds = {}
     music = None
-
+    level_music = {}
     @classmethod
     def load(cls):
         cls.sounds["shoot"] = SoundLoader.load(resource_path("assets/sounds/shoot.wav"))
@@ -1133,7 +1139,10 @@ class SoundManager:
             cls.music.loop = True
             cls.music.volume = cls.music_volume
             cls.music.play()'''
-
+        cls.level_music["level_1"] = SoundLoader.load(resource_path("assets/sounds/level_1.wav"))
+        cls.level_music["level_2"] = SoundLoader.load(resource_path("assets/sounds/level_2.wav"))
+        cls.level_music["level_3"] = SoundLoader.load(resource_path("assets/sounds/level_3.wav"))
+    
     @classmethod
     def play(cls, name):
         sound = cls.sounds.get(name)
@@ -1153,5 +1162,23 @@ class SoundManager:
         cls.sfx_volume = volume
         for sound in cls.sounds.values():
             if sound:
-                sound.volume = volume
-   
+                sound.volume = volume   
+
+    @classmethod
+    def play_music(cls, level_name):
+        if cls.music:  # Check if music is already playing, don't stop it.
+            cls.music.stop()
+            cls.music = None
+        """play music level"""
+        if level_name in cls.level_music:
+            cls.music = cls.level_music[level_name]
+            cls.music.loop = True
+            cls.music.volume = cls.music_volume
+            cls.music.play()
+
+    @classmethod
+    def stop_music(cls):
+        """stop music level when you leave level"""
+        if cls.music:
+            cls.music.stop()
+            cls.music = None
