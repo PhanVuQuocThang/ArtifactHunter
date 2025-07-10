@@ -361,7 +361,7 @@ class Player(Entity):
         self.inventory.remove(item)
     def apply_inventory_effects(self):
         """Apply item effects from inventory"""
-        self.can_double_jump = False
+        self.jumpboost = False
         self.damage = 10
         self.max_health = 100
         self.current_health = min(getattr(self, "current_health", self.max_health), self.max_health)
@@ -369,10 +369,10 @@ class Player(Entity):
         for item in self.inventory:
             name = getattr(item, 'name', str(item)).lower()
             if name == 'sky rocket':
-                self.can_double_jump = True
-            elif name == 'acient shotgun':
+                self.jumpboost = True
+            if name == 'ancient shotgun':
                 self.damage = 20
-            elif name == 'meat armor':
+            if name == 'meat armor':
                 self.max_health = 200
                 self.current_health = min(self.current_health, self.max_health)
 
@@ -384,14 +384,14 @@ class Player(Entity):
     #             return True
     #     return False
     def jump(self):
-        """Handle jumping logic, including double jump if applicable."""
+        """Inherited jump from Entity class, but add jumpboost logic"""
         if self.on_ground:
-            super().jump()
-            self.has_double_jumped = False  # Reset on first jump
-        elif self.can_double_jump and not self.has_double_jumped:
-            self.velocity.y = self.jump_speed
-            self.has_double_jumped = True
-
+            if hasattr(self, 'jumpboost') and self.jumpboost:
+                self.velocity.y = self.jump_speed * 1.5
+            else:
+                self.velocity.y = self.jump_speed
+            self.on_ground = False
+        
     def process_input(self):
         if getattr(self.parent, "paused", False):
             return
@@ -400,10 +400,6 @@ class Player(Entity):
         if 'up' in self.keys_pressed or 'w' in self.keys_pressed:
             if self.on_ground:
                 self.jump()
-            elif self.can_double_jump and not self.has_double_jumped:
-                self.on_ground = True
-                self.jump()
-                self.has_double_jumped = True
         # Handle open inventory
         # if 'b' in self.keys_pressed:
         #     self.toggle_inventory()
@@ -837,6 +833,10 @@ class BaseLevelContents(Widget):
         self.player.process_input()
         self.check_collisions()
         self.player.update(dt)
+        #update artifacts
+        for artifact in self.platforms:
+            if isinstance(artifact, Artifact):
+                artifact.pick_up(self.player)
 
     def cleanup(self):
         """Clean up game resources"""
