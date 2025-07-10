@@ -121,6 +121,7 @@ class LevelSelectionScreen(Screen):
                         app.custom_level_data = self.custom_level_data
                         self.custom_level_status = "Level loaded"
                     else:
+                        self.custom_level_data = None
                         self.custom_level_status = "Incorrect data format"
                 print("Custom level loaded successfully")
             else:
