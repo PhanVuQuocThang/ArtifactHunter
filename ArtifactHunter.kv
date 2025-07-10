@@ -385,6 +385,11 @@
                     text: '3'
                     on_press: root.select_level(3)
 
+                CircularButton:
+                    text: root.custom_level_status
+                    on_press: root.select_level(4)
+                    font_size: '14sp'
+
 <LevelContents>:
     FloatLayout:
         id: overlay_layer
