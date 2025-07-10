@@ -68,8 +68,10 @@ class Level_Custom_Class(Screen):
         self.bg_rect.size = instance.size
 
 class LevelContents(BaseLevelContents):
-    def __init__(self, data, **kwargs):
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        app = App.get_running_app()
+        self.data : dict = app.custom_level_data
         self.player = Player(x=10, y=40, width=40, height=40)
         self.paused = False     # Flag to stop game
         self.active_puzzle_popup = None
@@ -84,51 +86,44 @@ class LevelContents(BaseLevelContents):
         self.add_widget(self.player)
 
         self.create_platform()
-        self.create_puzzle()
         self.create_enemy()
         self.create_artifact()
 
     def create_platform(self, platforms_data=(), death_trap_data=()):
-        # Create all platforms for this level
-        ground = Platform(
-            x=0, y=0,
-            num_tiles_x=100,
-            num_tiles_y=1,
-            texture_path=resource_path('assets/sprites/PixelTexturePack/Textures/Tech/HIGHTECHWALL.png')
-        )
-        self.platforms.append(ground)
-        self.add_widget(ground)
-
-        for x, y, num_tiles_x, num_tiles_y, in death_trap_data:
-            death_trap = DeathTrap(x, y, num_tiles_x, num_tiles_y,
-                                texture_path=resource_path('assets/sprites/tech_laser.png'))
-            self.platforms.append(death_trap)
-            self.add_widget(death_trap)
-
-        for x, y, num_tiles_x, num_tiles_y in platforms_data:
-            platform = Platform(x, y, num_tiles_x, num_tiles_y,
-                                texture_path=resource_path('assets/sprites/PixelTexturePack/Textures/Tech/BIGSQUARES.png'))
-            self.platforms.append(platform)
-            self.add_widget(platform)
+        death_trap_data = self.data.get('death_trap')
+        if death_trap_data:
+            for x, y, num_tiles_x, num_tiles_y, in death_trap_data:
+                death_trap = DeathTrap(x, y, num_tiles_x, num_tiles_y,
+                                    texture_path=resource_path('assets/sprites/tech_laser.png'))
+                self.platforms.append(death_trap)
+                self.add_widget(death_trap)
+        platforms_data = self.data.get('platform')
+        if platforms_data:
+            for x, y, num_tiles_x, num_tiles_y in platforms_data:
+                platform = Platform(x, y, num_tiles_x, num_tiles_y,
+                                    texture_path=resource_path('assets/sprites/PixelTexturePack/Textures/Tech/BIGSQUARES.png'))
+                self.platforms.append(platform)
+                self.add_widget(platform)
 
     def create_enemy(self, enemy_data=()):
-        for x,y in enemy_data:
-            enemy = Enemy(x=x, y=y, width=40, height=40, texture_path=resource_path('assets/sprites/Characters/Enemy.png'))
-            self.enemies.append(enemy)
-            self.add_widget(enemy)
+        enemy_data = self.data.get('enemy')
+        if enemy_data:
+            for x,y in enemy_data:
+                enemy = Enemy(x=x, y=y, width=40, height=40, texture_path=resource_path('assets/sprites/Characters/Enemy.png'))
+                self.enemies.append(enemy)
+                self.add_widget(enemy)
 
     def create_artifact(self, artifact_data=()):
-        artifact_data = artifact_data
-        artifact = Artifact(name="Acient Shotgun",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path=resource_path('assets/sprites/Artifacts/DMG.png'))
-        self.artifact = artifact
-        self.platforms.append(artifact)
-        self.add_widget(artifact)
+        artifact_data = self.data.get('artifact')
+        if artifact_data:
+            for x, y in artifact_data:
+                artifact = Artifact(name="Acient Shotgun",
+                                    x=x, y=y,
+                                    width=40, height=40,texture_path=resource_path('assets/sprites/Artifacts/DMG.png'))
+                self.artifact = artifact
+                self.platforms.append(artifact)
+                self.add_widget(artifact)
 
-    def create_puzzle(self, puzzle_data=()):
-        for puzzle in PuzzleComponent.get_puzzles_for_level(3):  
-            puzzle.level_ref = self  # So puzzle can check enemies when failed
-            self.puzzles.append(puzzle)
-            self.add_widget(puzzle)
 
 
     def update(self, dt):
