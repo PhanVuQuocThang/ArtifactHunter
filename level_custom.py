@@ -3,11 +3,12 @@ from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.graphics import Rectangle, Color
 from kivy.clock import Clock
+from kivy.app import App
 from utils import resource_path
 
 from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap
 
-class Level_3_Class(Screen):
+class Level_Custom_Class(Screen):
     """
     All other Level_X_Class should follow this structure.
     When entering the game, this should be called and registered as a Screen for ScreenManager.
@@ -67,7 +68,7 @@ class Level_3_Class(Screen):
         self.bg_rect.size = instance.size
 
 class LevelContents(BaseLevelContents):
-    def __init__(self, **kwargs):
+    def __init__(self, data, **kwargs):
         super().__init__(**kwargs)
         self.player = Player(x=10, y=40, width=40, height=40)
         self.paused = False     # Flag to stop game
@@ -87,7 +88,7 @@ class LevelContents(BaseLevelContents):
         self.create_enemy()
         self.create_artifact()
 
-    def create_platform(self):
+    def create_platform(self, platforms_data=(), death_trap_data=()):
         # Create all platforms for this level
         ground = Platform(
             x=0, y=0,
@@ -97,72 +98,6 @@ class LevelContents(BaseLevelContents):
         )
         self.platforms.append(ground)
         self.add_widget(ground)
-
-        # Floating platforms
-        platforms_data = [
-            (60, 80, 15, 1),
-            (120, 160, 2, 1),
-            (240, 240, 2, 1),
-            (480, 300, 2, 1),
-            (240, 360, 2, 1),
-            (360, 480, 8, 1),
-            (120, 420, 1, 1),
-
-            (660, 80, 1, 11),
-            (780, 40, 1, 5),
-            (780, 320, 1, 8),
-            (900, 80, 1, 11),
-            (0, 600, 20, 1),
-
-            (1020, 80, 2, 1),
-            (1140, 160, 2, 1),
-            (900, 240, 3, 1),
-            (1140, 360, 2, 1),
-            (900, 280, 2, 1),
-            (1060 - 120, 440, 1, 1),
-
-            (1220, 40, 1, 15),
-            (1220, 120 + 40 * 15, 1, 10),
-            (820, 560, 1, 1),
-            (780, 760, 1, 4),
-
-            (120, 760 - 80, 2, 1),
-            (240, 840 - 80, 2, 1),
-            (120, 800, 1, 1),
-            (240, 960 - 80, 10, 1),
-
-            (780, 720, 8, 1),
-            (900, 880, 1, 4),
-            (1060, 760, 1, 5),
-            (1020, 800, 1, 1),
-            (940, 880, 1, 1),
-
-            (1260, 600, 10, 1),
-            (1620, 80, 1, 21),
-            (1580, 680, 1, 1),
-            (1380, 760, 1, 1),
-            (1260, 840, 1, 1),
-            (1420, 880, 1, 1),
-
-            (1580, 80, 1, 1),
-            (1380, 160, 1, 1),
-            (1260, 240, 1, 1),
-            (1420, 320, 1, 1),
-            (1580, 400, 1, 1),
-            (1260, 480, 5, 1),
-            (1420, 420, 1, 2)
-        ]
-
-        death_trap_data = [
-            (200, 120, 12, 1),
-            (660, 40, 3, 1),
-            (820, 40, 1, 1),
-            (1020, 40, 2, 1),
-            (860, 760, 1, 1),
-            (1470, 640, 1, 1),
-            (1270, 40, 6, 1),
-
-        ]
 
         for x, y, num_tiles_x, num_tiles_y, in death_trap_data:
             death_trap = DeathTrap(x, y, num_tiles_x, num_tiles_y,
@@ -176,41 +111,20 @@ class LevelContents(BaseLevelContents):
             self.platforms.append(platform)
             self.add_widget(platform)
 
-    def create_enemy(self):
-        enemy_data = [
-            (160, 40),
-            (520, 340),
-            (1180, 40),
-            (1060, 120),
-            (980, 280),
-            (1180, 400),
-            (570, 640),
-            (430, 640),
-            (210, 640),
-            (1020, 760),
-            (1580, 640),
-            (1580, 720),
-            (1260, 880),
-            (1615, 40),
-            (1880, 40)
-        ]
-
+    def create_enemy(self, enemy_data=()):
         for x,y in enemy_data:
             enemy = Enemy(x=x, y=y, width=40, height=40, texture_path=resource_path('assets/sprites/Characters/Enemy.png'))
             self.enemies.append(enemy)
             self.add_widget(enemy)
 
-    def create_artifact(self):
-        artifact_data = (1300, 520)
+    def create_artifact(self, artifact_data=()):
+        artifact_data = artifact_data
         artifact = Artifact(name="Acient Shotgun",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path=resource_path('assets/sprites/Artifacts/DMG.png'))
         self.artifact = artifact
         self.platforms.append(artifact)
         self.add_widget(artifact)
 
-    def create_puzzle(self):
-        puzzle_data = [
-
-        ]
+    def create_puzzle(self, puzzle_data=()):
         for puzzle in PuzzleComponent.get_puzzles_for_level(3):  
             puzzle.level_ref = self  # So puzzle can check enemies when failed
             self.puzzles.append(puzzle)

@@ -1,4 +1,6 @@
 import os
+import ast
+
 from utils import resource_path
 from kivy.resources import resource_add_path
 
@@ -10,14 +12,18 @@ from kivy.app import App
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.core.text import LabelBase
+from kivy.uix.label import Label
 from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.clock import Clock
+from kivy.properties import StringProperty
 
-from level_1 import LevelContents, Level_1_Class
-from level_2 import LevelContents, Level_2_Class
-from level_3 import LevelContents, Level_3_Class
-from level_class import SoundManager
+from level_1 import Level_1_Class
+from level_2 import Level_2_Class
+from level_3 import Level_3_Class
+from level_custom import Level_Custom_Class
+from level_custom import LevelContents as Custom_LevelContents
+from level_class import SoundManager, DeathTrap, Platform, Enemy, Artifact, PuzzleComponent
 
 # # Set default font
 # LabelBase.register(name="Roboto", fn_regular=resource_path("assets/fonts/EBGaramond-Regular.ttf")
@@ -47,9 +53,14 @@ class MainMenuScreen(Screen):
     def quit_game(self):
         App.get_running_app().stop()
 
+
 class LevelSelectionScreen(Screen):
+    custom_level_status = StringProperty("No custom.txt found")  # Use Kivy property
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.custom_level_data = None
+        self.check_custom_level()
+        self.categories = {'platform', 'death_trap', 'enemy', 'artifact', 'puzzle'}
 
     def back(self):
         print("Back to main menu")
@@ -64,11 +75,81 @@ class LevelSelectionScreen(Screen):
                 self.manager.current = 'level_2'
             case 3:
                 self.manager.current = 'level_3'
+            case 4:
+                # Handle custom level
+                if self.custom_level_data is not None:
+                    # Custom level exists, proceed to load it
+                    print("Loading custom level...")
+                    self.manager.current = 'level_custom'
+                else:
+                    # No custom level found
+                    print("No custom level available")
             case _:
                 print("Invalid")
 
     def on_enter(self, *args):
         print(Window.size)
+        self.check_custom_level()
+
+    def check_custom_level(self):
+        """Check if custom.txt exists and load its contents"""
+        try:
+            app = App.get_running_app()
+            if os.path.exists("custom.txt"):
+                with open("custom.txt", "r", encoding="utf-8") as file:
+                    parsed_data = self.parse_level_data(file.read())
+                    print(parsed_data)
+                self.custom_level_status = "Level loaded"
+                print("Custom level loaded successfully")
+            else:
+                self.custom_level_data = None
+                self.custom_level_status = "No custom.txt found"
+                print("No custom.txt file found")
+        except Exception as e:
+            self.custom_level_data = None
+            self.custom_level_status = str(e)
+            print(f"Error loading custom level: {e}")
+
+    def parse_level_data(self, content: str):
+        result = {}
+        current_categ = None
+        lines = content.strip().split()
+        for line in lines:
+            line = line.strip()
+            if ':' in line:
+                current_categ = line.split(':')[0].strip()
+                if current_categ in self.categories:
+                    result[current_categ] = []
+                else:
+                    raise ValueError(f"Category \'{current_categ}\' not found")
+            elif '(' in line:
+                line = f"[{line}]" # Enclose line with [] to make it a list
+                parsed = ast.literal_eval(line)
+                result[current_categ].extend(parsed)
+            else:
+                continue
+        return result
+
+    def try_load(self, data: dict):
+        try:
+            death_trap_data = data['death_trap']
+            for x, y, num_tiles_x, num_tiles_y, in death_trap_data:
+                death_trap = DeathTrap(x, y, num_tiles_x, num_tiles_y,
+                                       texture_path=resource_path('assets/sprites/tech_laser.png'))
+            platforms_data = data['platform']
+            for x, y, num_tiles_x, num_tiles_y in platforms_data:
+                platform = Platform(x, y, num_tiles_x, num_tiles_y,
+                                    texture_path=resource_path(
+                                        'assets/sprites/PixelTexturePack/Textures/Tech/BIGSQUARES.png'))
+            enemy_data = data['enemy']
+            for x, y in enemy_data:
+                enemy = Enemy(x=x, y=y, width=40, height=40,
+                              texture_path=resource_path('assets/sprites/Characters/Enemy.png'))
+            # Cant yet try to load puzzles and artifact
+        except Exception as e:
+            return False
+        return True
+
 
 class GuideScreen(Screen):
     def __init__(self, **kwargs):
@@ -204,6 +285,7 @@ Factory.register('PausePopup', cls=PausePopup)
 class ArtifactHunterApp(App):
     current_playing_screen = None
     is_paused = False  # NEW: Pause state flag
+    custom_level_data = None
 
     def build(self):
         Window.bind(on_key_down=self.on_key_down)
@@ -217,6 +299,7 @@ class ArtifactHunterApp(App):
         sm.add_widget(Level_1_Class(name='level_1'))
         sm.add_widget(Level_2_Class(name='level_2'))
         sm.add_widget(Level_3_Class(name='level_3'))
+        sm.add_widget(Level_Custom_Class(name='level_custom'))
         return sm
 
     def on_key_down(self, window, key, *args):

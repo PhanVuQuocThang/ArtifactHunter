@@ -122,7 +122,7 @@ class DeathTrap(Platform):
                          tile_width=tile_width, tile_height=tile_height,
                          **kwargs)
 
-        self.damage = 40
+        self.damage = 30
 
 class Entity(Widget):
     """
@@ -201,7 +201,6 @@ class Player(Entity):
         super().__init__(x, y, width, height, **kwargs)
         self.inventory = [] # Need to also handle inventory input
         self.inventory_popup = None # Inventory object
-        self.health = 3
         self.airborne_with_no_movement_input = False # This is for animation, look at the update method
 
         self.last_direction = Vector(1, 0)
@@ -394,18 +393,18 @@ class Player(Entity):
         else:
             self.stop_horizontal_movement()
 
-    def on_enemy_collision(self, enemy):
-        if self.invincible:
-            return
-
-        print(f"Collided with enemy: {enemy}")
-        self.health -= 1
-        print(f"Player health: {self.health}")
-
-        if self.health <= 0:
-            self.die()
-        else:
-            self.become_invincible()
+    # def on_enemy_collision(self, enemy):
+    #     if self.invincible:
+    #         return
+    #
+    #     print(f"Collided with enemy: {enemy}")
+    #     self.health -= 1
+    #     print(f"Player health: {self.health}")
+    #
+    #     if self.health <= 0:
+    #         self.die()
+    #     else:
+    #         self.become_invincible()
 
     def become_invincible(self):
         self.invincible = True
@@ -516,6 +515,7 @@ class PlayerInventory(Popup):
                 return parent.player
             parent = getattr(parent, 'parent', None)
         return None
+
 class Artifact(Entity):
     """
     Represents a collectible artifact that grants the player special abilities
@@ -568,8 +568,6 @@ class Artifact(Entity):
             if self.parent:
                 self.parent.remove_widget(self)
 
-
-
     def unlock_level(self):
         """
         Logic to unlock the next level.
@@ -591,7 +589,7 @@ class Enemy(Entity):
         self.attack_damage = 10
         self.is_alive = True
         self.direction = 1  # 1 for right, -1 for left
-        self.move_speed = 0  # Enemy moves slower than player
+        self.move_speed = 100  # Enemy moves slower than player
 
         # Cooldown bắn
         self.shoot_interval = shoot_cooldown  # seconds
@@ -712,6 +710,71 @@ class Enemy(Entity):
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
 
+    def check_collisions_enemy(self):
+        """Check collisions between player and platforms and artifacts."""
+        # Type hinting for IDEs so it's less of a pain to work with.
+        # Doesn't interrupt the code with or without these.
+        self.platforms : List[Platform]
+        self.enemies: List[Enemy]
+
+        player_rect = (
+            self.player.pos[0],
+            self.player.pos[1],
+            self.player.size[0],
+            self.player.size[1]
+        )
+
+        epsilon = 2 # pixels. Allow slight overlap or near-platform alignment. Unused.
+        for enemy in self.enemies:
+            player_rect = (
+                enemy.pos[0],
+                enemy.pos[1],
+                enemy.size[0],
+                enemy.size[1]
+            )
+
+            for platform in self.platforms:
+                platform_rect = (
+                    platform.pos[0],
+                    platform.pos[1],
+                    platform.size[0],
+                    platform.size[1]
+                )
+
+                # Standard Axis-Aligned Bounding Box (AABB) collision check
+                if (player_rect[0] < platform_rect[0] + platform_rect[2] and
+                        player_rect[0] + player_rect[2] > platform_rect[0] and
+                        player_rect[1] < platform_rect[1] + platform_rect[3] and
+                        player_rect[1] + player_rect[3] > platform_rect[1]):
+
+                    # Calculate overlap distances for each direction
+                    # Read the comments to prevent misused of these variables. They follow standard naming for overlapping.
+                    overlap_left = (player_rect[0] + player_rect[2]) - platform_rect[0]  # platform's left - player's right
+                    overlap_right = (platform_rect[0] + platform_rect[2]) - player_rect[0]  # platform's right - player's left
+                    overlap_top = (platform_rect[1] + platform_rect[3]) - player_rect[1]  # platform’s top - player’s bottom
+                    overlap_bottom = (player_rect[1] + player_rect[3]) - platform_rect[1]  # platform's bottom - player's top
+                    min_overlap = min(overlap_left, overlap_right, overlap_bottom, overlap_top)
+
+                    # Player is falling down onto platform
+                    if enemy.velocity.y <= 0 and min_overlap == overlap_top:
+                        # Place player on top of platform
+                        enemy.pos = (
+                            enemy.pos[0],
+                            platform_rect[1] + platform_rect[3]
+                        )
+                        enemy.velocity.y = 0
+
+                    # Player is head hitting the bottom of platform
+                    elif enemy.velocity.y > 0 and min_overlap == overlap_bottom:
+                        enemy.velocity.y = -50 # Makes the player fall faster
+
+                    # Player is touching the sides of platform
+                    elif enemy.velocity.x > 0 and min_overlap == overlap_left:
+                        enemy.velocity.x = -enemy.velocity.x
+                    elif enemy.velocity.x < 0 and min_overlap == overlap_right:
+                        enemy.velocity.x = -enemy.velocity.x
+
+
     def check_collisions(self):
         """Check collisions between player and platforms and artifacts."""
         # Type hinting for IDEs so it's less of a pain to work with.
@@ -746,7 +809,8 @@ class BaseLevelContents(Widget):
                 if isinstance(platform, DeathTrap):
                     self.player.current_health -= platform.damage
                     print("Player health:", self.player.current_health)
-                    self.player.die()
+                    if self.player.current_health <= 0:
+                        self.player.die()
 
                 if isinstance(platform, Artifact):
                     self.player.inventory_add_item(platform.name)
@@ -789,7 +853,9 @@ class BaseLevelContents(Widget):
         Follow: process input -> check collisions -> update"""
         self.player.process_input()
         self.check_collisions()
+        self.check_collisions_enemy()
         self.player.update(dt)
+        self.player.current_health = 1000
 
     def cleanup(self):
         """Clean up game resources"""
@@ -972,7 +1038,7 @@ class PuzzleComponent(Widget):
             return
 
         if self.locked_until_enemy_dead and any(e.alive() for e in self.level_ref.enemies):
-            self.show_hint("🔒 Eliminate all enemies before continuing!")
+            self.show_hint("")
             return
         self.locked_until_enemy_dead = False
 
@@ -1026,7 +1092,7 @@ class PuzzleComponent(Widget):
         SoundManager.play("incorrect")  # 🔊 play incorrect sound
 
         if self.wrong_attempts >= self.max_wrong_attempts:
-            self.locked_until_enemy_dead = True   
+            self.locked_until_enemy_dead = False
             Clock.schedule_once(lambda dt: self.show_hint("❌ Incorrect twice! Defeat enemies to try again."), 2 )            
         else:
             self.show_hint("❌ Wrong! You have {}/{} attempts.".format(
