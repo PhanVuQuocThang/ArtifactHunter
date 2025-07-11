@@ -169,9 +169,9 @@ class LevelContents(BaseLevelContents):
 
     def create_artifact(self):
         artifact_data = (700, 40)
-        artifact = Artifact(name="Sky Rocket",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,
+        artifact = Artifact(name="sky rocket",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,
                             texture_path=resource_path('assets/sprites/Artifacts/DOUBLE_JUMP.png'))
-        self.artifact = artifact
+        # self.artifact = artifact
         self.platforms.append(artifact) # Workaround for collision checking
         self.add_widget(artifact)
 
@@ -201,6 +201,12 @@ class LevelContents(BaseLevelContents):
         # Physics and collision checks
         self.check_collisions()
         self.player.update(dt)
+        # Update artifacts
+        for artifact in self.platforms:
+            if isinstance(artifact, Artifact):
+                artifact.pick_up(self.player)
+        # Update inventory effects
+        self.player.apply_inventory_effects()
 
         # Update puzzle state; remove if solved
         for puzzle in self.puzzles[:]:
