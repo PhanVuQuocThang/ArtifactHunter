@@ -72,7 +72,11 @@ class LevelContents(BaseLevelContents):
         super().__init__(**kwargs)
         app = App.get_running_app()
         self.data : dict = app.custom_level_data
-        self.player = Player(x=10, y=40, width=40, height=40)
+        if self.data.get('spawn_point'):
+            x, y = self.data['spawn_point'][0]
+        else:
+            x, y = 1, 1
+        self.player = Player(x=x, y=y, width=40, height=40)
         self.paused = False     # Flag to stop game
         self.active_puzzle_popup = None
         
