@@ -5,7 +5,8 @@ from kivy.graphics import Rectangle, Color
 from kivy.clock import Clock
 from utils import resource_path
 
-from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap, SoundManager
+from level_class import (Player, Platform, BaseLevelContents, Artifact, Enemy,
+                         PuzzleComponent, PlaceHolder, DeathTrap, SoundManager, LevelExit)
 
 class Level_2_Class(Screen):
     """
@@ -114,6 +115,7 @@ class LevelContents(BaseLevelContents):
         self.create_puzzle()
         self.create_enemy()
         self.create_artifact()
+        self.create_exit()
 
     def create_platform(self):
         # Create all platforms for this level
@@ -239,6 +241,11 @@ class LevelContents(BaseLevelContents):
             self.puzzles.append(puzzle)
             self.add_widget(puzzle)
 
+    def create_exit(self):
+        exit_pos = (1760, 200)
+        exit = LevelExit(x=exit_pos[0], y=exit_pos[1])
+        self.platforms.append(exit)
+        self.add_widget(exit)
 
     def update(self, dt):
         if self.paused:  # if pause → no process

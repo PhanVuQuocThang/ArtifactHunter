@@ -746,6 +746,20 @@ class Enemy(Entity):
         self.rect.pos = self.pos
         self.rect.size = self.size
 
+class LevelExit(Widget):
+    def __init__(self, x=0, y=0, width=40, height=40,
+                 texture_path="assets/sprites/exit_portal.png", **kwargs):
+        super().__init__(**kwargs)
+        # Set widget position and size
+        self.pos = (x, y)
+        self.size = (width, height)
+        self.texture_path = resource_path(texture_path)
+
+        if self.texture_path:
+            with self.canvas:
+                Rectangle(texture=CoreImage(self.texture_path).texture, pos=self.pos, size=self.size)
+
+
 class BaseLevelContents(Widget):
     """Contain the base contents of levels. This one only handles the main logic."""
 
@@ -790,6 +804,10 @@ class BaseLevelContents(Widget):
                     self.player.inventory_add_item(platform.name)
                     self.remove_widget(platform)
                     self.platforms.remove(platform)
+
+                if isinstance(platform, LevelExit):
+                    self.parent.manager.current = 'level_selection'
+                    return
 
                 # Calculate overlap distances for each direction
                 # Read the comments to prevent misused of these variables. They follow standard naming for overlapping.

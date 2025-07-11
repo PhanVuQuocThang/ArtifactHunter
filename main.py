@@ -23,7 +23,8 @@ from level_2 import Level_2_Class
 from level_3 import Level_3_Class
 from level_custom import Level_Custom_Class
 from level_custom import LevelContents as Custom_LevelContents
-from level_class import SoundManager, DeathTrap, Platform, Enemy, Artifact, Player
+from level_class import SoundManager, DeathTrap, Platform, Enemy, Artifact, Player, LevelExit
+
 
 # # Set default font
 # LabelBase.register(name="Roboto", fn_regular=resource_path("assets/fonts/EBGaramond-Regular.ttf")
@@ -71,7 +72,7 @@ class MainMenuScreen(Screen):
 
 class LevelSelectionScreen(Screen):
     custom_level_status = StringProperty("No custom.txt found")  # Use Kivy property
-    categories = {'platform', 'death_trap', 'enemy', 'artifact', 'spawn_point'}
+    categories = {'platform', 'death_trap', 'enemy', 'artifact', 'spawn_point', 'exit'}
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.custom_level_data = None
@@ -182,6 +183,10 @@ class LevelSelectionScreen(Screen):
                 artifact_data = data['artifact']
                 for x, y in artifact_data:
                     artifact = Artifact(name="Custom", x=x, y=y)
+            if data.get('exit'):
+                exit_data = data['exit']
+                for x, y in exit_data:
+                    exit = LevelExit(x=x, y=y)
 
         except Exception as e:
             return False
