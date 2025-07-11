@@ -6,7 +6,9 @@ from kivy.clock import Clock
 from kivy.app import App
 from utils import resource_path
 
-from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap
+from level_class import Player, Platform, BaseLevelContents, Artifact, Enemy, PuzzleComponent, PlaceHolder, DeathTrap, \
+    LevelExit
+
 
 class Level_Custom_Class(Screen):
     """
@@ -92,6 +94,7 @@ class LevelContents(BaseLevelContents):
         self.create_platform()
         self.create_enemy()
         self.create_artifact()
+        self.create_exit()
 
     def create_platform(self, platforms_data=(), death_trap_data=()):
         death_trap_data = self.data.get('death_trap')
@@ -128,7 +131,13 @@ class LevelContents(BaseLevelContents):
                 self.platforms.append(artifact)
                 self.add_widget(artifact)
 
-
+    def create_exit(self):
+        exit_data = self.data.get('exit')
+        if exit_data:
+            for x, y in exit_data:
+                exit = LevelExit(x=x, y=y)
+                self.platforms.append(exit)
+                self.add_widget(exit)
 
     def update(self, dt):
         if self.paused:  # if pause → no process
