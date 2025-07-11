@@ -23,7 +23,7 @@ from level_2 import Level_2_Class
 from level_3 import Level_3_Class
 from level_custom import Level_Custom_Class
 from level_custom import LevelContents as Custom_LevelContents
-from level_class import SoundManager, DeathTrap, Platform, Enemy, Artifact, PuzzleComponent
+from level_class import SoundManager, DeathTrap, Platform, Enemy, Artifact, Player
 
 # # Set default font
 # LabelBase.register(name="Roboto", fn_regular=resource_path("assets/fonts/EBGaramond-Regular.ttf")
@@ -71,7 +71,7 @@ class MainMenuScreen(Screen):
 
 class LevelSelectionScreen(Screen):
     custom_level_status = StringProperty("No custom.txt found")  # Use Kivy property
-    categories = {'platform', 'death_trap', 'enemy', 'artifact'}
+    categories = {'platform', 'death_trap', 'enemy', 'artifact', 'spawn_point'}
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.custom_level_data = None
@@ -121,6 +121,7 @@ class LevelSelectionScreen(Screen):
                         app.custom_level_data = self.custom_level_data
                         self.custom_level_status = "Level loaded"
                     else:
+                        self.custom_level_data = None
                         self.custom_level_status = "Incorrect data format"
                 print("Custom level loaded successfully")
             else:
@@ -136,7 +137,7 @@ class LevelSelectionScreen(Screen):
         """Parse the raw data from file into categories for easier processing"""
         result = {}
         current_categ = None
-        lines = content.strip().split()
+        lines = content.strip().split('\n')
         for line in lines:
             line = line.strip()
             if ':' in line:
@@ -146,6 +147,7 @@ class LevelSelectionScreen(Screen):
                 else:
                     raise ValueError(f"Category \'{current_categ}\' not found")
             elif '(' in line:
+                print(line)
                 line = f"[{line}]" # Enclose line with [] to make it a list
                 parsed = ast.literal_eval(line)
                 result[current_categ].extend(parsed)
@@ -156,6 +158,10 @@ class LevelSelectionScreen(Screen):
     def try_load(self, data: dict):
         """Try to load the parsed data to see if it was formatted correctly"""
         try:
+            if data.get('spawn_point'):
+                player_data = data['spawn_point']
+                x, y = player_data[0]
+                Player(x=x, y=y, width=40, height=40)
             if data.get('death_trap'):
                 death_trap_data = data['death_trap']
                 for x, y, num_tiles_x, num_tiles_y, in death_trap_data:
