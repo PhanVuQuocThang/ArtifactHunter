@@ -259,6 +259,10 @@ class LevelContents(BaseLevelContents):
         # Physics and collision checks
         self.check_collisions()
         self.player.update(dt)
+        # Update artifacts
+        for artifact in self.platforms:
+            if isinstance(artifact, Artifact):
+                artifact.pick_up(self.player)
 
         # Update puzzle state; remove if solved
         for puzzle in self.puzzles[:]:

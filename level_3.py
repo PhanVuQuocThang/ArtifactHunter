@@ -230,7 +230,7 @@ class LevelContents(BaseLevelContents):
 
     def create_artifact(self):
         artifact_data = (1300, 520)
-        artifact = Artifact(name="Acient Shotgun",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path=resource_path('assets/sprites/Artifacts/DMG.png'))
+        artifact = Artifact(name="ancient shotgun",x=artifact_data[0],y = artifact_data[1],  width=40, height=40,texture_path=resource_path('assets/sprites/Artifacts/DMG.png'))
         self.artifact = artifact
         self.platforms.append(artifact)
         self.add_widget(artifact)
@@ -264,7 +264,10 @@ class LevelContents(BaseLevelContents):
         # Physics and collision checks
         self.check_collisions()
         self.player.update(dt)
-
+        # Update artifacts
+        for artifact in self.platforms:
+            if isinstance(artifact, Artifact):
+                artifact.pick_up(self.player)
         # Update puzzle state; remove if solved
         for puzzle in self.puzzles[:]:
             if isinstance(puzzle, PlaceHolder):
