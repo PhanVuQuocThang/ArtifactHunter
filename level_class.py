@@ -72,9 +72,6 @@ class GameObject(Widget):
         self.rect.pos = self.pos
         self.rect.size = self.size
 
-
-
-
 class OldPlatform(Widget):
     def __init__(self, x, y, tile_size=40, texture_path=None, **kwargs):
         super().__init__(**kwargs)
@@ -121,10 +118,7 @@ class DeathTrap(Platform):
                          texture_path=texture_path,
                          tile_width=tile_width, tile_height=tile_height,
                          **kwargs)
-
-
         self.damage = 5
-
 
 class Entity(Widget):
     """
@@ -539,6 +533,7 @@ class PlayerInventory(Popup):
                 return parent.player
             parent = getattr(parent, 'parent', None)
         return None
+
 class Artifact(Entity):
     """
     Represents a collectible artifact that grants the player special abilities
