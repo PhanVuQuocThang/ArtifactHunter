@@ -71,10 +71,15 @@ class Level_3_Class(Screen):
     def on_leave(self, *args):
         print("Leaving level 3 ")
         if hasattr(self, 'level_contents') and self.level_contents:
-            if self.level_contents.active_puzzle_popup and hasattr(self.level_contents.active_puzzle_popup, 'popup'):
+            if (hasattr(self.level_contents, 'active_puzzle_popup') and 
+                self.level_contents.active_puzzle_popup and
+                hasattr(self.level_contents.active_puzzle_popup, 'popup') and
+                self.level_contents.active_puzzle_popup.popup):
+                
                 self.level_contents.active_puzzle_popup.popup.dismiss()  # Đóng popup câu đố
                 self.level_contents.active_puzzle_popup = None  # Reset popup
 
+            self.level_contents.active_puzzle_popup = None
             self.level_contents.cleanup()
         SoundManager.stop_music()
         if self.update_event:
@@ -82,6 +87,7 @@ class Level_3_Class(Screen):
             self.update_event = None
     
     def reset_level(self):
+        self.on_leave()
         """Reset the level to its initial state"""
         if self.level_contents:
             self.remove_widget(self.level_contents)

@@ -309,8 +309,19 @@ class GameOverPopup(Popup):
         app = App.get_running_app()
         screen_name = app.current_playing_screen
         screen = app.root.get_screen(screen_name)
+        if hasattr(screen, 'level_contents'):
+            for puzzle in getattr(screen.level_contents, 'puzzles', []):
+                if hasattr(puzzle, 'reset_puzzle'):
+                    puzzle.reset_puzzle()
+            
+            screen.remove_widget(screen.level_contents)
+            screen.level_contents = None
+        
+        screen.initialized = False
+        screen.on_enter()
         if hasattr(screen, 'reset_level'):
             screen.reset_level()
+        
         # Reset game state
         app.is_paused = False
         self.dismiss()
@@ -332,14 +343,16 @@ class GameOverPopup(Popup):
         
         # Reset the puzzle used questions when going back to menu
         if hasattr(screen, 'level_contents') and screen.level_contents:
-            # Reset puzzle states
-            for puzzle in screen.level_contents.puzzles:
-                if hasattr(puzzle, 'show_prompt'):
-                    puzzle.show_prompt = False
-                if hasattr(puzzle, 'popup') and puzzle.popup:
-                    puzzle.popup.dismiss()
-                    puzzle.popup = None
-            screen.level_contents.active_puzzle_popup = None
+            if hasattr(screen.level_contents, 'active_puzzle_popup'):
+                if screen.level_contents.active_puzzle_popup:
+                    if hasattr(screen.level_contents.active_puzzle_popup, 'popup'):
+                        if screen.level_contents.active_puzzle_popup.popup:
+                            screen.level_contents.active_puzzle_popup.popup.dismiss()
+                    screen.level_contents.active_puzzle_popup = None
+            # Reset puzzle
+            for puzzle in getattr(screen.level_contents, 'puzzles', []):
+                if hasattr(puzzle, 'reset_puzzle'): 
+                    puzzle.reset_puzzle()
             
         # Reset the screen completely
         screen.clear_widgets()
@@ -348,6 +361,9 @@ class GameOverPopup(Popup):
         # Go back to main menu
         app.root.current = 'main_menu'
         self.dismiss()
+        app.is_paused = False
+        # clean music
+        SoundManager.stop_music()
 
 Factory.register('GameOverPopup', cls=GameOverPopup)
 Factory.register('PausePopup', cls=PausePopup)
