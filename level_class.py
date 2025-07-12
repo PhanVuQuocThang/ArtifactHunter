@@ -1013,7 +1013,7 @@ class PuzzleComponent(Widget):
         self.correct_index = correct_index
         self.level_ref = level_ref  # Reference to the level (for enemy checking)
 
-        self.max_wrong_attempts = 2
+        self.max_wrong_attempts = 3
         self.wrong_attempts = 0
         self.locked_until_enemy_dead = False
 
@@ -1036,7 +1036,10 @@ class PuzzleComponent(Widget):
         self.show_hint("✅ Correct! You solved the puzzle.")
         
     def _check_player_interaction(self, dt):
-        if not self.parent or not hasattr(self.parent, 'player'):
+        if (not self.parent or 
+            not hasattr(self.parent, 'player') or 
+            getattr(App.get_running_app(), 'is_paused', False) or
+            self.solved):
             return
         if self.collide_widget(self.parent.player) and not self.solved and not self.show_prompt:
             self.show_question_popup()
@@ -1048,9 +1051,6 @@ class PuzzleComponent(Widget):
         if App.get_running_app().is_paused:
             return
 
-        if self.locked_until_enemy_dead and any(e.alive() for e in self.level_ref.enemies):
-            self.show_hint("🔒 Eliminate all enemies before continuing!")
-            return
         self.locked_until_enemy_dead = False
 
         if self.level_ref:
@@ -1109,15 +1109,39 @@ class PuzzleComponent(Widget):
         SoundManager.play("incorrect")  # 🔊 play incorrect sound
 
         if self.wrong_attempts >= self.max_wrong_attempts:
-            self.locked_until_enemy_dead = True   
-            Clock.schedule_once(lambda dt: self.show_hint("❌ Incorrect twice! Defeat enemies to try again."), 2 )            
+            Clock.schedule_once(lambda dt: self.show_game_over(), 1/5)            
         else:
-            self.show_hint("❌ Wrong! You have {}/{} attempts.".format(
-                self.max_wrong_attempts - self.wrong_attempts, self.max_wrong_attempts))
+             self.show_hint(f"❌ Wrong! You have {self.max_wrong_attempts - self.wrong_attempts} attempts left.")
+    
+    def show_game_over(self):
+        """Show the Game Over popup when the player answers 3 times incorrectly."""
+        if self.popup:
+            self.popup.dismiss()
+            self.popup = None
+        self.show_prompt = False
+        self.wrong_attempts = 0
+
+        app = App.get_running_app()
+        app.current_playing_screen = app.root.current
+        app.is_paused = True
+        if self.level_ref:
+            self.level_ref.paused = True
+        SoundManager.play("gameover")
+        game_over_popup = Factory.GameOverPopup()  # Assuming you have a GameOverPopup factory
+        game_over_popup.open()
+
+    def reset_puzzle(self):
+        if self.popup:
+            self.popup.dismiss()
+            self.popup = None
+        self.show_prompt = False
+        self.wrong_attempts = 0
+        self.solved = False
+        Clock.unschedule(self._check_player_interaction)
 
     def show_hint(self, msg):
-        offset = 60 if "🔒 Eliminate all enemies before continuing!" in msg else 20
-        hint = Label(text=msg, pos=(self.x, self.top + offset), size_hint=(None, None),
+        offset = 300
+        hint = Label(text=msg, pos=(self.x+300, self.top + offset), size_hint=(None, None),
             size=(300, 40), color=(1, 1, 1, 1), bold=True,font_size='18sp')
         
         Window.add_widget(hint)
